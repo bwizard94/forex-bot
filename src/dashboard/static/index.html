@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Forex Sentinel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css?v=20260926-confirmations" />
+  </head>
+  <body>
+    <div class="grain"></div>
+    <div id="action-status" role="status" aria-live="polite" hidden></div>
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark">FS</div>
+        <div>
+          <h1>Forex Sentinel</h1>
+          <p class="sub">EUR/USD specialist · price integrity · TE · FXStreet · Barchart · Investing.com · Forex Factory · TradingView · NewsNow · living playbook · Google Sheets · #forex</p>
+        </div>
+      </div>
+      <div class="top-meta">
+        <div class="pill" id="env-pill">PRACTICE</div>
+        <div class="pill" id="tf-pill">M5</div>
+        <div class="clock" id="clock">--:--:-- UTC</div>
+        <button id="toggle-trading" class="btn primary">Pause trading</button>
+              <div class="action-result" id="toggle-trading-result" role="status" aria-live="polite" hidden></div>
+        <button id="run-cycle" class="btn">Run cycle</button>
+              <div class="action-result" id="run-cycle-result" role="status" aria-live="polite" hidden></div>
+      </div>
+    </header>
+
+    <section class="kpis" id="kpis">
+      <article class="kpi">
+        <span>NAV</span>
+        <strong id="kpi-nav">—</strong>
+      </article>
+      <article class="kpi">
+        <span>Balance</span>
+        <strong id="kpi-balance">—</strong>
+      </article>
+      <article class="kpi">
+        <span>Unrealized</span>
+        <strong id="kpi-upl">—</strong>
+      </article>
+      <article class="kpi">
+        <span>Drawdown</span>
+        <strong id="kpi-dd">—</strong>
+      </article>
+      <article class="kpi">
+        <span>Open trades</span>
+        <strong id="kpi-open">—</strong>
+      </article>
+      <article class="kpi">
+        <span>Last cycle</span>
+        <strong id="kpi-cycle">idle</strong>
+      </article>
+    </section>
+
+    <nav class="tabs" id="tabs" aria-label="Hub sections">
+      <button class="tab active" data-tab="overview">Overview</button>
+      <button class="tab" data-tab="chart">Chart</button>
+      <button class="tab" data-tab="playbook">Playbook</button>
+      <button class="tab" data-tab="growth">Growth</button>
+      <button class="tab" data-tab="history">History</button>
+      <button class="tab" data-tab="briefings">Briefings</button>
+      <button class="tab" data-tab="news">News</button>
+      <button class="tab" data-tab="bars">OHLCV bars</button>
+      <button class="tab" data-tab="indicators">Indicators</button>
+      <button class="tab" data-tab="signals">Signals</button>
+      <button class="tab" data-tab="setups">Setups</button>
+      <button class="tab" data-tab="trades">Trades</button>
+      <button class="tab" data-tab="journal">Journal</button>
+      <button class="tab" data-tab="lessons">Lessons</button>
+      <button class="tab" data-tab="snapshots">Account</button>
+      <button class="tab" data-tab="daily">Daily P/L</button>
+      <button class="tab" data-tab="alerts">Alerts</button>
+      <button class="tab" data-tab="cycles">Cycles</button>
+    </nav>
+
+    <main>
+      <section class="view active" id="view-overview">
+        <section class="card"><h2>Decision health · last 24 hours</h2><p id="order-value-cap"></p><p id="sampling-policy"></p><p id="strategy-learning" role="status">Strategy validation has not loaded. Service uptime is not evidence of profitability.</p><p id="decision-health">Decision diagnostics will appear after the service loads this update.</p></section>
+        <section class="kpis dense" id="hub-counts">
+          <article class="kpi">
+            <span>Bars stored</span>
+            <strong id="count-bars">—</strong>
+          </article>
+          <article class="kpi">
+            <span>Signals</span>
+            <strong id="count-signals">—</strong>
+          </article>
+          <article class="kpi">
+            <span>Buys / Sells</span>
+            <strong id="count-sides">—</strong>
+          </article>
+          <article class="kpi">
+            <span>Trades</span>
+            <strong id="count-trades">—</strong>
+          </article>
+          <article class="kpi">
+            <span>Realized P/L</span>
+            <strong id="count-pl">—</strong>
+          </article>
+          <article class="kpi">
+            <span>Skipped</span>
+            <strong id="count-skipped">—</strong>
+          </article>
+          <article class="kpi">
+            <span>Journal / losses</span>
+            <strong id="count-journal">—</strong>
+          </article>
+          <article class="kpi">
+            <span>Active lessons</span>
+            <strong id="count-lessons">—</strong>
+          </article>
+          <article class="kpi">
+            <span>Briefings / recaps</span>
+            <strong id="count-briefings">—</strong>
+          </article>
+        </section>
+        <div class="grid">
+          <section class="panel span-12" id="slack-setup">
+            <header>
+              <h2>#forex updates</h2>
+              <span class="hint" id="slack-status">Checking Slack…</span>
+            </header>
+            <p class="hint" id="slack-help">
+              The channel is silent until the bot has a Slack token. Create a Slack app, add
+              <code>chat:write</code> and <code>channels:join</code>, invite it to <strong>#forex</strong>,
+              then paste the <code>xoxb-…</code> token (or an incoming webhook URL).
+            </p>
+            <div class="slack-form">
+              <label>Bot token
+                <input id="slack-token" type="password" autocomplete="off" placeholder="xoxb-…" />
+              </label>
+              <label>Webhook (optional)
+                <input id="slack-webhook" type="url" autocomplete="off" placeholder="https://hooks.slack.com/services/…" />
+              </label>
+              <label>Channel
+                <input id="slack-channel" type="text" value="forex" />
+              </label>
+              <button class="btn primary" id="save-slack">Connect #forex</button>
+              <div class="action-result" id="save-slack-result" role="status" aria-live="polite" hidden></div>
+            </div>
+          </section>
+          <section class="panel span-12" id="sheets-setup">
+            <header>
+              <h2>Google Sheets book</h2>
+              <span class="hint" id="sheets-status">Checking Sheets…</span>
+            </header>
+            <p class="hint" id="sheets-help">
+              Every fill, close, and intel cycle rewrites a Google workbook of trades,
+              journals, daily P/L, lessons, account snapshots, live signals, and open
+              tickets. Authorize Google Sheets in this chat, then paste a Composio API
+              key so the live desk can keep pushing. Without a key the same book is
+              packed locally at <code>data/sheets_payload.json</code>.
+            </p>
+            <p class="hint" id="sheets-link-wrap" hidden>
+              Open workbook:
+              <a id="sheets-link" href="#" target="_blank" rel="noopener">Google Sheet</a>
+            </p>
+            <div class="slack-form sheets-form">
+              <label>Composio API key
+                <input id="sheets-key" type="password" autocomplete="off" placeholder="ak_…" />
+              </label>
+              <label>Spreadsheet ID or URL (optional)
+                <input id="sheets-id" type="text" autocomplete="off" placeholder="blank = create on first push" />
+              </label>
+              <button class="btn primary" id="save-sheets">Connect Sheets</button>
+              <div class="action-result" id="save-sheets-result" role="status" aria-live="polite" hidden></div>
+              <button class="btn" id="sync-sheets">Sync now</button>
+              <div class="action-result" id="sync-sheets-result" role="status" aria-live="polite" hidden></div>
+            </div>
+          </section>
+          <section class="panel span-12" id="mt4-setup">
+            <header>
+              <h2>MetaTrader 4 demo</h2>
+              <span class="hint" id="mt4-status">Checking MT4…</span>
+            </header>
+            <p class="hint" id="mt4-help">
+              Same EUR/USD desk tickets fill on OANDA practice <em>and</em> this MT4 demo.
+              Paste the demo login, password, and server. Optional MetaApi token hosts the
+              terminal in the cloud. Otherwise drop <code>mt4/ForexSentinelBridge.mq4</code>
+              on the terminal (allow the hub URL in Expert Advisors) so it polls
+              <code>/api/mt4/bridge</code>. Until then copies sit on a local ledger, labeled
+              <code>ledger-…</code>, not on MetaQuotes. Operator tickets with any magic other
+              than <strong>212100</strong> stay hands-off.
+            </p>
+            <p class="hint" id="mt4-secret-wrap" hidden>
+              Bridge secret (paste into the EA, shown once):
+              <code id="mt4-secret"></code>
+            </p>
+            <div class="slack-form mt4-form">
+              <label>MT4 login
+                <input id="mt4-login" type="text" autocomplete="off" placeholder="demo account number" />
+              </label>
+              <label>Password
+                <input id="mt4-password" type="password" autocomplete="off" placeholder="investor or master" />
+              </label>
+              <label>Server
+                <input id="mt4-server" type="text" autocomplete="off" placeholder="Broker-Demo" />
+              </label>
+              <label>MetaApi token (optional)
+                <input id="mt4-metaapi" type="password" autocomplete="off" placeholder="blank = EA or local ledger" />
+              </label>
+              <button class="btn primary" id="save-mt4">Connect MT4</button>
+              <div class="action-result" id="save-mt4-result" role="status" aria-live="polite" hidden></div>
+            </div>
+          </section>
+          <section class="panel span-6">
+            <header>
+              <h2>Watchlist</h2>
+              <span class="hint" id="account-line">connecting…</span>
+            </header>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Pair</th>
+                    <th>Bid</th>
+                    <th>Ask</th>
+                    <th>Mid</th>
+                    <th>Ref</th>
+                    <th>Δ pips</th>
+                    <th>Spread</th>
+                    <th>Book</th>
+                  </tr>
+                </thead>
+                <tbody id="quotes-body">
+                  <tr>
+                    <td colspan="8" class="empty">Waiting for the first quote tick…</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section class="panel span-6">
+            <header>
+              <h2>Open positions</h2>
+              <span class="hint">Several EUR/USD tickets are allowed. Close flattens that ticket only.</span>
+            </header>
+            <div id="positions" class="cards empty-state">No open demo positions.</div>
+          </section>
+          <section class="panel span-7">
+            <header>
+              <h2>Latest signals</h2>
+              <span class="hint">Open the Signals tab for the full spreadsheet</span>
+            </header>
+            <div id="signals" class="tape empty-state">No signals yet.</div>
+          </section>
+          <section class="panel span-5">
+            <header>
+              <h2>Recent fills</h2>
+              <span class="hint">Open the Trades tab for SL/TP, slippage, and exits</span>
+            </header>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Id</th>
+                    <th>Pair</th>
+                    <th>Side</th>
+                    <th>Fill</th>
+                    <th>Units</th>
+                    <th>P/L</th>
+                    <th>Whose</th>
+                    <th>Venue</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="trades-body">
+                  <tr>
+                    <td colspan="9" class="empty">No demo orders yet.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section class="panel span-12">
+            <header>
+              <h2>EUR/USD marked chart</h2>
+              <span class="hint">OANDA practice candles with specialist markup: trend, fib, zones, patterns, text, icons</span>
+            </header>
+            <div class="chart-shell compact">
+              <div id="overview-chart" class="chart-canvas"></div>
+            </div>
+          </section>
+          <section class="panel span-12">
+            <header>
+              <h2>EUR/USD intel</h2>
+              <span class="hint">Price consistency across OANDA and CurrencyFreaks, plus news and macro that can move the pair — posted to #forex</span>
+            </header>
+            <div id="intel" class="tape empty-state">No intel yet — the desk writes it on startup and every 20 minutes.</div>
+          </section>
+          <section class="panel span-12">
+            <header>
+              <h2>Tape reads</h2>
+              <span class="hint">Why it is trading — or sitting — with the full oscillator snapshot, posted to #forex</span>
+            </header>
+            <div id="tape" class="tape empty-state">No tape yet — a read is written on every cycle and pulsed to Slack.</div>
+          </section>
+          <section class="panel span-12">
+            <header>
+              <h2>EUR/USD desk notes</h2>
+              <span class="hint">08:00 UTC morning briefing · 05:00 UTC news harvest · 23:30 UTC daily analysis</span>
+            </header>
+            <div id="desk-notes" class="tape empty-state">No briefing yet — it writes at 08:00 UTC on trading days, or tap Briefings to run one now.</div>
+          </section>
+          <section class="panel span-12">
+            <header>
+              <h2>What it is learning</h2>
+              <span class="hint">Recorded outcomes, initial-risk coverage, and evidence quality. Manual results stay separate.</span>
+            </header>
+            <div id="growth-overview" class="tape empty-state">No growth study yet — it restudies on startup and after every fill.</div>
+          </section>
+          <section class="panel span-12">
+            <header>
+              <h2>Extra datasets</h2>
+              <span class="hint">Historical files in <code>extra datasets/</code> replayed into <code>desk/HISTORY.md</code></span>
+            </header>
+            <div id="history-overview" class="tape empty-state">No extra datasets studied yet — drop EUR/USD CSV/JSON/Parquet in extra datasets/ and restudy.</div>
+          </section>
+          <section class="panel span-12">
+            <header>
+              <h2>Skip rules</h2>
+              <span class="hint">Setups the desk will skip or demand a stronger score for after recent losses</span>
+            </header>
+            <div id="skip-rules" class="tape empty-state">No skip rules yet — they appear after repeat losses on the same family of setups.</div>
+          </section>
+          <section class="panel span-12">
+            <header>
+              <h2>Trade journal</h2>
+              <span class="hint">Why it bought or sold · what went wrong on losses · how it will avoid the same setup</span>
+            </header>
+            <div id="journals" class="tape empty-state">No reflections yet — they appear on the next demo fill.</div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-playbook">
+        <section class="panel span-12 sheet-panel">
+          <header class="sheet-head">
+            <div>
+              <h2>Living EUR/USD playbook</h2>
+              <p class="hint">
+                Rewritten on every intel cycle, fill, and recap. This is <code>desk/EURUSD_PLAYBOOK.md</code> —
+                the file the bot rereads so it can get better. Dated notes accumulate in
+                <code>desk/LEARNING_LOG.md</code>. Trading Economics standing notes live in
+                <code>desk/TRADINGECONOMICS.md</code>. FXStreet standing notes live in
+                <code>desk/FXSTREET.md</code>. Barchart standing notes live in
+                <code>desk/BARCHART.md</code>. Investing.com standing notes live in
+                <code>desk/INVESTING.md</code>. Forex Factory pair-news notes live in
+                <code>desk/FOREXFACTORY.md</code>. TradingView EURUSD hub and hunt notes live in
+                <code>desk/TRADINGVIEW.md</code>. How the desk operates lives in
+                <code>desk/OPERATING.md</code>. The Ox scalp recipe lives in
+                <code>desk/SCALPING.md</code>. Common-mistake avoidance lives in
+                <code>desk/MISTAKES.md</code>. The Google Sheets workbook lives in
+                <code>desk/SHEETS.md</code>. News harvest and scored patterns live in
+                <code>desk/NEWS.md</code> and <code>desk/NEWS_PATTERNS.md</code>.
+              </p>
+            </div>
+            <div class="sheet-actions">
+              <button class="btn primary" id="run-intel">Run intel now</button>
+              <div class="action-result" id="run-intel-result" role="status" aria-live="polite" hidden></div>
+            </div>
+          </header>
+          <pre id="playbook-md" class="playbook-doc">Loading playbook…</pre>
+          <h3 class="log-head">Trading Economics</h3>
+          <pre id="te-guide" class="playbook-doc dim">No Trading Economics notes yet.</pre>
+          <h3 class="log-head">FXStreet</h3>
+          <pre id="fxs-guide" class="playbook-doc dim">No FXStreet notes yet.</pre>
+          <h3 class="log-head">Barchart</h3>
+          <pre id="bc-guide" class="playbook-doc dim">No Barchart notes yet.</pre>
+          <h3 class="log-head">Investing.com</h3>
+          <pre id="inv-guide" class="playbook-doc dim">No Investing.com notes yet.</pre>
+          <h3 class="log-head">Forex Factory</h3>
+          <pre id="ff-guide" class="playbook-doc dim">No Forex Factory notes yet.</pre>
+          <h3 class="log-head">MetaTrader 4 venue</h3>
+          <pre id="mt4-guide" class="playbook-doc dim">No MT4 notes yet.</pre>
+          <h3 class="log-head">TradingView</h3>
+          <pre id="tv-guide" class="playbook-doc dim">No TradingView notes yet.</pre>
+          <h3 class="log-head">How this desk operates</h3>
+          <pre id="ops-guide" class="playbook-doc dim">No operating notes yet.</pre>
+          <h3 class="log-head">Ox scalp</h3>
+          <pre id="scalp-guide" class="playbook-doc dim">No scalp notes yet.</pre>
+          <h3 class="log-head">Mistakes this desk refuses</h3>
+          <pre id="mistakes-guide" class="playbook-doc dim">No mistake book yet.</pre>
+          <h3 class="log-head">Google Sheets book</h3>
+          <pre id="sheets-guide" class="playbook-doc dim">No Sheets notes yet.</pre>
+          <h3 class="log-head">EUR/USD news harvest</h3>
+          <pre id="news-guide" class="playbook-doc dim">No news notes yet.</pre>
+          <h3 class="log-head">News patterns</h3>
+          <pre id="news-patterns-guide" class="playbook-doc dim">No scored news patterns yet.</pre>
+          <h3 class="log-head">Learning log</h3>
+          <pre id="learning-log" class="playbook-doc dim">No learning log yet.</pre>
+        </section>
+      </section>
+
+      <section class="view" id="view-growth">
+        <section class="panel span-12 sheet-panel">
+          <header class="sheet-head">
+            <div>
+              <h2>EUR/USD growth ledger</h2>
+              <p class="hint">
+                Expectancy by setup, teacher copies, and the stop floor the desk learned from chopped 5-pip losses.
+                This is <code>desk/GROWTH.md</code> — rewritten after every fill.
+              </p>
+            </div>
+            <div class="sheet-actions">
+              <button class="btn primary" id="run-growth">Restudy now</button>
+              <div class="action-result" id="run-growth-result" role="status" aria-live="polite" hidden></div>
+            </div>
+          </header>
+          <pre id="growth-md" class="playbook-doc">Loading growth ledger…</pre>
+          <h3 class="log-head">Historical extra datasets</h3>
+          <pre id="growth-history-md" class="playbook-doc dim">No extra datasets studied yet.</pre>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Setup</th>
+                  <th>Scope</th>
+                  <th>W/L</th>
+                  <th>Expectancy</th>
+                  <th>Net</th>
+                  <th>Lesson</th>
+                </tr>
+              </thead>
+              <tbody id="growth-body">
+                <tr><td colspan="6" class="empty">No closed EUR/USD desk fills scored yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section class="view" id="view-history">
+        <section class="panel span-12 sheet-panel">
+          <header class="sheet-head">
+            <div>
+              <h2>Extra datasets</h2>
+              <p class="hint">
+                ForexSB EUR/USD history is downloaded automatically. Drop extra CSV/JSON/Parquet
+                dumps in this project's <code>extra datasets/</code> folder. A cloud agent cannot
+                see your local Desktop; when you run the bot on your machine it also reads
+                <code>Desktop/extra datasets</code>.
+              </p>
+            </div>
+            <div class="sheet-actions">
+              <button class="btn primary" id="run-history">Restudy now</button>
+              <div class="action-result" id="run-history-result" role="status" aria-live="polite" hidden></div>
+            </div>
+          </header>
+          <pre id="history-md" class="playbook-doc">Loading historical study…</pre>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>File</th>
+                  <th>Kind</th>
+                  <th>Rows</th>
+                  <th>Timeframe</th>
+                  <th>Span</th>
+                  <th>Note</th>
+                </tr>
+              </thead>
+              <tbody id="history-files">
+                <tr><td colspan="6" class="empty">No extra datasets loaded yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-wrap" style="margin-top: 1.25rem">
+            <table>
+              <thead>
+                <tr>
+                  <th>Setup</th>
+                  <th>Side</th>
+                  <th>Session</th>
+                  <th>W/L</th>
+                  <th>Expectancy</th>
+                  <th>Win rate</th>
+                </tr>
+              </thead>
+              <tbody id="history-setups">
+                <tr><td colspan="6" class="empty">No named setups scored yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section class="view" id="view-chart">
+        <section class="panel span-12 sheet-panel">
+          <header class="sheet-head">
+            <div>
+              <h2>EUR/USD · OANDA practice</h2>
+              <p class="hint" id="chart-meta">
+                Same candles as the demo account. The desk inks them with the OANDA toolkit:
+                indicators, text, trend lines, drawing mode (fib/zones/channel), icons, and patterns.
+              </p>
+            </div>
+            <div class="sheet-actions" id="chart-tfs">
+              <button class="btn tf-btn" data-tf="M1">M1</button>
+              <button class="btn tf-btn active" data-tf="M5">M5</button>
+              <button class="btn tf-btn" data-tf="H1">H1</button>
+              <button class="btn tf-btn" data-tf="D1">D1</button>
+            </div>
+          </header>
+          <div class="chart-toolbar" id="chart-tools" role="toolbar" aria-label="Chart markup tools">
+            <button type="button" class="tool-btn active" data-layer="indicators" aria-pressed="true">Indicators</button>
+            <button type="button" class="tool-btn active" data-layer="text" aria-pressed="true">Text</button>
+            <button type="button" class="tool-btn active" data-layer="trend" aria-pressed="true">Trend line</button>
+            <button type="button" class="tool-btn active" data-layer="drawing" aria-pressed="true">Drawing mode</button>
+            <button type="button" class="tool-btn active" data-layer="icons" aria-pressed="true">Icons</button>
+            <button type="button" class="tool-btn active" data-layer="patterns" aria-pressed="true">Patterns</button>
+          </div>
+          <div class="chart-layout">
+            <div class="chart-shell">
+              <div id="desk-chart" class="chart-canvas"></div>
+              <div class="chart-legend" id="chart-legend"></div>
+            </div>
+            <aside class="chart-blotter" id="chart-blotter">
+              <h3>Desk ink</h3>
+              <ul class="chart-tools-used" id="chart-tools-used"><li>Waiting on OANDA candles.</li></ul>
+              <h3>Marks</h3>
+              <div class="tape empty-state" id="chart-marks">No marks yet — they appear with OANDA candles.</div>
+            </aside>
+          </div>
+        </section>
+      </section>
+
+      <section class="view" id="view-briefings">
+        <section class="panel span-12 sheet-panel">
+          <header class="sheet-head">
+            <div>
+              <h2>EUR/USD daily desk</h2>
+              <p class="hint" id="briefing-meta">
+                08:00 UTC: sentiment, news that can move the pair, what it is looking for, and the day's goals.
+                23:30 UTC: what went right, what went wrong, positive/negative verdict, and what it learned.
+              </p>
+            </div>
+            <div class="sheet-actions">
+              <button class="btn primary" id="run-morning">Write 08:00 briefing</button>
+              <div class="action-result" id="run-morning-result" role="status" aria-live="polite" hidden></div>
+              <button class="btn" id="run-recap">Write 23:30 recap</button>
+              <div class="action-result" id="run-recap-result" role="status" aria-live="polite" hidden></div>
+              <a class="btn" id="briefing-export" href="/api/tables/briefings/csv">Export CSV</a>
+            </div>
+          </header>
+          <div class="briefing-grid" id="briefing-today">
+            <article class="briefing-card empty-state" id="card-morning">No morning briefing yet for today.</article>
+            <article class="briefing-card empty-state" id="card-recap">No night recap yet for today.</article>
+          </div>
+          <h3 class="briefing-history-title">Earlier notes</h3>
+          <div id="briefing-history" class="tape empty-state">Earlier weekday notes will stack here.</div>
+        </section>
+      </section>
+
+      <section class="view" id="view-news">
+        <section class="panel span-12 sheet-panel">
+          <header class="sheet-head">
+            <div>
+              <h2>EUR/USD news book</h2>
+              <p class="hint" id="news-meta">
+                05:00 UTC daily harvest from Forex Factory market/eurusd, NewsNow, Google News, Yahoo/ECB/Fed, and the intel hubs.
+                Each story is classified, a EUR/USD lean is stored with the spot mid, then the 1-hour
+                M5 close is checked to see whether the call was right.
+              </p>
+            </div>
+            <div class="sheet-actions">
+              <button class="btn primary" id="run-news-scan">Scan news now</button>
+              <div class="action-result" id="run-news-scan-result" role="status" aria-live="polite" hidden></div>
+              <a class="btn" href="/api/tables/news/csv">Export CSV</a>
+            </div>
+          </header>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>n</th>
+                  <th>Correct</th>
+                  <th>Wrong</th>
+                  <th>Unclear</th>
+                  <th>Pending</th>
+                  <th>1h hit</th>
+                  <th>Avg |pips|</th>
+                </tr>
+              </thead>
+              <tbody id="news-patterns-body">
+                <tr><td class="empty" colspan="8">No scored categories yet — run a scan.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h3 class="briefing-history-title">Latest wires</h3>
+          <div id="news-items" class="tape empty-state">No headlines stored yet.</div>
+          <h3 class="log-head">Pattern book</h3>
+          <pre id="news-patterns-md" class="playbook-doc dim">Loading patterns…</pre>
+        </section>
+      </section>
+
+      <section class="view" id="view-sheet">
+        <section class="panel span-12 sheet-panel">
+          <header class="sheet-head">
+            <div>
+              <h2 id="sheet-title">OHLCV bars</h2>
+              <p class="hint" id="sheet-meta">0 rows</p>
+            </div>
+            <div class="sheet-actions">
+              <label>
+                Pair
+                <select id="filter-symbol">
+                  <option value="ALL">All</option>
+                </select>
+              </label>
+              <label id="filter-timeframe-wrap">
+                Timeframe
+                <select id="filter-timeframe">
+                  <option value="ALL">All</option>
+                  <option>M1</option>
+                  <option>M5</option>
+                  <option>H1</option>
+                  <option>D1</option>
+                </select>
+              </label>
+              <label id="filter-action-wrap" hidden>
+                Action
+                <select id="filter-action">
+                  <option value="ALL">All</option>
+                  <option>BUY</option>
+                  <option>SELL</option>
+                  <option>HOLD</option>
+                </select>
+              </label>
+              <label id="filter-skipped-wrap" hidden>
+                Skipped
+                <select id="filter-skipped">
+                  <option value="ALL">All</option>
+                  <option value="false">Taken</option>
+                  <option value="true">Skipped</option>
+                </select>
+              </label>
+              <label id="filter-source-wrap" hidden>
+                Source
+                <select id="filter-source">
+                  <option value="ALL">All</option>
+                  <option value="live">Live</option>
+                  <option value="history">History</option>
+                </select>
+              </label>
+              <label id="filter-side-wrap" hidden>
+                Side
+                <select id="filter-side">
+                  <option value="ALL">All</option>
+                  <option>BUY</option>
+                  <option>SELL</option>
+                </select>
+              </label>
+              <label id="filter-status-wrap" hidden>
+                Status
+                <select id="filter-status">
+                  <option value="ALL">All</option>
+                  <option value="open">open</option>
+                  <option value="partial">partial</option>
+                  <option value="closed">closed</option>
+                  <option value="rejected">rejected</option>
+                </select>
+              </label>
+              <label id="filter-outcome-wrap" hidden>
+                Outcome
+                <select id="filter-outcome">
+                  <option value="ALL">All</option>
+                  <option value="open">open</option>
+                  <option value="win">win</option>
+                  <option value="loss">loss</option>
+                  <option value="scratch">scratch</option>
+                </select>
+              </label>
+              <label id="filter-rule-wrap" hidden>
+                Rule
+                <select id="filter-rule">
+                  <option value="ALL">All</option>
+                  <option value="observe">observe</option>
+                  <option value="require_high_strength">require high strength</option>
+                  <option value="skip">skip</option>
+                </select>
+              </label>
+              <label id="filter-kind-wrap" hidden>
+                Kind
+                <select id="filter-kind">
+                  <option value="ALL">All</option>
+                  <option value="signal">signal</option>
+                  <option value="fill">fill</option>
+                  <option value="journal">journal</option>
+                  <option value="postmortem">postmortem</option>
+                  <option value="warning">warning</option>
+                  <option value="eod">eod</option>
+                  <option value="morning">morning</option>
+                  <option value="recap">recap</option>
+                </select>
+              </label>
+              <button class="btn" id="sheet-prev">Prev</button>
+              <button class="btn" id="sheet-next">Next</button>
+              <a class="btn primary" id="sheet-export" href="/api/tables/bars/csv">Export CSV</a>
+            </div>
+          </header>
+          <div class="table-wrap sheet">
+            <table>
+              <thead>
+                <tr id="sheet-head"></tr>
+              </thead>
+              <tbody id="sheet-body">
+                <tr>
+                  <td class="empty">Choose a tab to load a spreadsheet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <footer>
+      Every M1 bar, signal, fill, and account snapshot is stored locally. Every demo buy and sell gets a written thesis;
+      every close gets a post-mortem, and losing fingerprints tighten or skip the next entries. Weekdays start with an
+      08:00 UTC EUR/USD briefing and close with a 23:30 UTC recap. The Chart tab marks the same OANDA practice candles
+      a specialist would: EMAs, bands, sessions, news, signals, and SL/TP. Export CSV on each sheet.
+    </footer>
+    <script src="/static/vendor/lightweight-charts.standalone.production.js"></script>
+    <script src="/static/chart.js"></script>
+    <script src="/static/app.js?v=20260929-notional"></script>
+  </body>
+</html>

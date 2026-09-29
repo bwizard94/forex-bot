@@ -1,0 +1,67 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+logs/
+*.log
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+data/sheets_payload.json
+data/mt4-prefix/
+data/mt4-prefix64/
+.idea/
+.vscode/
+*.swp
+.DS_Store
+agent-tools/
+extra datasets/cache/
+extra datasets/*.csv
+extra datasets/*.tsv
+extra datasets/*.txt
+extra datasets/*.json
+extra datasets/*.jsonl
+extra datasets/*.parquet
+extra datasets/*.gz
+extra datasets/*.zip
+!extra datasets/README.md
+
+# Local operational state and private broker evidence
+.env.*
+!.env.example
+/data/
+/desk/*
+!/desk/OPERATING.md
+!/desk/SCALPING.md
+!/desk/MISTAKES.md
+!/desk/MT4.md
+!/desk/DOCUMENTATION_GUIDE.md
+!/desk/STRATEGY_LAB.md
+!/desk/STRATEGY_REFINEMENT_PROCESS.md
+!/desk/CONTEXTUAL_LOSS_REVIEW.md
+!/desk/BACKGROUND_SERVICE.md
+!/desk/RESEARCH.md
+!/desk/DUKASCOPY.md
+!/desk/SHEETS.md
+*.zip
+*.docx
+*.pem
+*.key
+/src/pipeline.py.part*.txt
+/HOW_TO_UPDATE_DESKTOP.txt
+!/desk/NEWS.md
+!/desk/FOREXFACTORY.md
+!/desk/BARCHART.md
+!/desk/FXSTREET.md
+!/desk/INVESTING.md
+!/desk/TRADINGECONOMICS.md
+!/desk/TRADINGVIEW.md

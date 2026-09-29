@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>DASHBOARD_HOST</key>
+		<string>127.0.0.1</string>
+		<key>PYTHONUNBUFFERED</key>
+		<string>1</string>
+		<key>SLACK_BOT_TOKEN</key>
+		<string></string>
+		<key>SLACK_WEBHOOK_URL</key>
+		<string></string>
+	</dict>
+	<key>ExitTimeOut</key>
+	<integer>30</integer>
+	<key>KeepAlive</key>
+	<true/>
+	<key>Label</key>
+	<string>com.brandong.forex-bot</string>
+	<key>ProcessType</key>
+	<string>Background</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/bin/caffeinate</string>
+		<string>-i</string>
+		<string>/Users/brandong/Desktop/forex-bot/forex/.venv/bin/python</string>
+		<string>-m</string>
+		<string>src.main</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/brandong/Desktop/forex-bot/forex/logs/service.stderr.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/brandong/Desktop/forex-bot/forex/logs/service.stdout.log</string>
+	<key>ThrottleInterval</key>
+	<integer>60</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/brandong/Desktop/forex-bot/forex</string>
+</dict>
+</plist>
