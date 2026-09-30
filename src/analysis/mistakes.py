@@ -70,9 +70,18 @@ def _utc(now: datetime | None) -> datetime:
     return ts.astimezone(timezone.utc)
 
 
+def broker_market_hours(settings) -> bool:
+    return (getattr(settings, "oanda_environment", None) == "practice" and
+            bool(getattr(settings, "practice_broker_market_hours", False)))
+
+
 def calendar_hold_reason(now: datetime | None, settings: Settings | None = None) -> str | None:
     """Why the desk is closed. None means the calendar is open for a scalp."""
     settings = settings or get_settings()
+    if broker_market_hours(settings):
+        # No desk-imposed calendar veto; this is not proof the market is open.
+        # Entry execution must still require fresh tradeable broker bid/ask.
+        return None
     ts = _utc(now)
     weekday = ts.weekday()
     window = (

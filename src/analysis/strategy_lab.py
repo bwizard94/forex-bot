@@ -24,7 +24,7 @@ session_filter trade_session_start_hour trade_session_end_hour require_htf_trend
 min_atr_pips min_stop_pips scalp_max_spread_pips scalp_max_hold_minutes
 friday_flat_hour monday_open_skip_minutes max_fill_slippage_pips cost_stop_fraction
 min_rr_ratio min_confluence atr_sl_multiplier atr_tp1_multiplier atr_tp2_multiplier
-htf_bias_timeframe trading_style'''.split()
+htf_bias_timeframe trading_style oanda_environment practice_broker_market_hours'''.split()
 SOURCES = ['analysis/strategy_lab.py', 'analysis/replay.py', 'analysis/signals.py',
            'analysis/continuous_lab.py',
            'analysis/indicators.py', 'analysis/mistakes.py', 'analysis/compare_strategies.py',

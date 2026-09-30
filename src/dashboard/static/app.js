@@ -366,6 +366,7 @@ function renderOverview(payload) {
   }
 
   const bot = payload.bot || {};
+  if (samplingBox && bot.entry_hours) samplingBox.textContent += ` Entry hours: ${bot.entry_hours}.`;
   if (samplingBox && bot.daily_loss_halt_enabled === false) {
     samplingBox.textContent += " Daily loss halt: disabled for practice. Other entry and risk limits still apply.";
   }

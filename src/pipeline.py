@@ -50,7 +50,7 @@ from src.analysis.growth import (
     widen_to_min_stop,
     write_growth,
 )
-from src.analysis.mistakes import live_mistake_gate, calendar_hold_reason
+from src.analysis.mistakes import live_mistake_gate, calendar_hold_reason, broker_market_hours
 from src.analysis.signals import TradeSignal, bars_to_frame, evaluate_signal
 from src.config import Settings, Timeframe, get_settings
 from src.data.fetcher import MarketDataFetcher, Quote
@@ -1771,7 +1771,7 @@ class TradingPipeline:
         max_hold = float(getattr(self.settings, "scalp_max_hold_minutes", 90) or 90)
         ok, why = should_flatten_scalp(trade, now=utcnow(), max_hold_minutes=max_hold)
         now = utcnow()
-        if now.weekday() == 4 and now.hour >= self.settings.friday_flat_hour and trade.source == SOURCE_BOT:
+        if not broker_market_hours(self.settings) and now.weekday() == 4 and now.hour >= self.settings.friday_flat_hour and trade.source == SOURCE_BOT:
             ok, why = True, "Friday flat"
         if not ok or not self._management_quote_ready(self._quotes.get(trade.symbol)):
             return
@@ -2139,6 +2139,7 @@ class TradingPipeline:
                     "environment": self.settings.oanda_environment,
                     "account_id": self.settings.oanda_account_id or self.broker.client._account_id,
                     "signal_timeframe": self.settings.signal_timeframe,
+                    "entry_hours": "Broker market hours" if broker_market_hours(self.settings) else "Configured desk calendar",
                     "watchlist": self.settings.symbols,
                     "slack_enabled": self.settings.slack_enabled,
                     "slack_channel": self.slack.target_label,

@@ -32,7 +32,7 @@ def completed_bars(frame, decision_time, duration, limit):
 
 def replay(m5, h1, d1, settings, *, step=1, lookback=8000, max_trades=500, costs=None, evaluator=None, timeframe="M5", entry_history=180, h1_history=120, d1_history=80):
     from src.analysis.signals import evaluate_signal
-    from src.analysis.mistakes import calendar_hold_reason
+    from src.analysis.mistakes import calendar_hold_reason, broker_market_hours
     from src.data.datasets import session_name
 
     if timeframe not in {"M1", "M5"}:
@@ -100,7 +100,7 @@ def replay(m5, h1, d1, settings, *, step=1, lookback=8000, max_trades=500, costs
                 close_part(px-d*slip, position['remaining'])
                 reason = 'stop'
             elif ((ts-position['opened_at']).total_seconds() >= settings.scalp_max_hold_minutes*60
-                  or (ts.weekday() == 4 and ts.hour >= settings.friday_flat_hour)):
+                  or (not broker_market_hours(settings) and ts.weekday() == 4 and ts.hour >= settings.friday_flat_hour)):
                 close_part(op-d*slip, position['remaining'])
                 reason = 'time_or_friday'
             elif stop_hit:

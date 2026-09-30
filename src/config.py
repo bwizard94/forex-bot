@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     bb_period: int = 20
     bb_std: float = 2.0
     session_filter: bool = True
+    practice_broker_market_hours: bool = False
     trade_session_start_hour: int = 0
     trade_session_end_hour: int = 22
     require_htf_trend: bool = True

@@ -33,6 +33,10 @@ Read [standing project guidance](README.part1.md), [setup reference](README.part
 [background service](desk/BACKGROUND_SERVICE.md), and
 [documentation guide](desk/DOCUMENTATION_GUIDE.md).
 
+The [five-video research review](desk/VIDEO_RESEARCH_2026-09-29.md) records
+timestamped source findings and proposed EUR/USD experiments. These proposals
+are documented research, not activated strategies.
+
 The [strategy lab](desk/STRATEGY_LAB.md) evaluates prospective experiments without
 automatically promoting them into broker execution. [Contextual loss review](desk/CONTEXTUAL_LOSS_REVIEW.md)
 separates observations from causal hypotheses. No profitable strategy is established.

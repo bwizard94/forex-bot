@@ -257,3 +257,34 @@ prior loss counts are advisory in practice, across lesson and growth checks.
 See [contextual review](CONTEXTUAL_LOSS_REVIEW.md). Current entry-quality checks and
 short cooldowns remain. Reviews separate recorded facts, hypotheses and unknowns;
 research findings do not automatically promote execution strategies.
+
+## Latest activity trial — September 29 evening
+
+Operator requested substantially more frequent practice trading. Entry evaluation
+uses completed M1 bars with H1/D1 context, scanning every 30 seconds. Weekday entry
+hours extend to 24:00 UTC; Friday's 20:00 UTC cutoff, weekend exclusion and Monday
+open buffer remain. Daily entry ceiling increases from 24 to 48. This is a ceiling,
+not a quota. Duplicate entry claims still prevent repeated orders on the same bar.
+
+All risk fractions and the sampling cap remain at 0.1%, with the 100,000-unit ceiling.
+Existing cooldowns (2 minutes after wins/scratches, 4 after losses), quote freshness,
+1.5-pip entry drift allowance, stop/target geometry and spread limits remain. Daily
+loss halts remain disabled; contextual loss review remains enabled. No existing
+position is resized or has protective orders rewritten by this configuration change.
+
+Earlier M1 retrospective results were negative. This is an operator-requested
+activity experiment, not a validated profitable strategy. The autonomous lab's
+already-frozen research reference is unchanged; its results must not be presented
+as validation of this newly activated M1 profile. Record live policy/timeframe
+separately when comparing outcomes. More scans do not guarantee more filled trades.
+
+## Latest hours override: follow broker availability
+
+`PRACTICE_BROKER_MARKET_HOURS=true` removes desk-imposed session cutoffs, Sunday
+exclusion, Monday opening buffer and early Friday flat behavior in practice. Fresh
+OANDA bid/ask must explicitly be tradeable before orders; broker closures remain
+authoritative. This is not permission to trade stale weekend candles. The ordinary
+90-minute scalp time stop, protective orders, news and execution-quality gates remain.
+The operator requested trading opportunities throughout the actual open market.
+The prior weekday-only activity-trial calendar is superseded. M1 / 30-second scans,
+48-entry ceiling and 0.1% planned risk remain as configured.
