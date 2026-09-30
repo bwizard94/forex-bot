@@ -78,7 +78,8 @@ def create_app() -> FastAPI:
     def health() -> dict:
         pipe = get_pipeline()
         from src.data.news import news_source_status
-        return {"news_sources": news_source_status(), "version": __version__, "ok": True, "warm": pipe._warm, "trading": pipe.trading_enabled,
+        from src.analysis.indicator_audit import read_status
+        return {"indicator_audit": read_status(), "news_sources": news_source_status(), "version": __version__, "ok": True, "warm": pipe._warm, "trading": pipe.trading_enabled,
                 "health_scope": "Service availability only; not strategy profitability or learning quality",
                 "startup_tasks": getattr(pipe, "startup_tasks", {"state": "unknown"}),
                 "documentation": getattr(pipe, "documentation_status", {"ok": False, "state": "pending"})}

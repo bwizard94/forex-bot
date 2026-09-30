@@ -8,6 +8,16 @@ from src.analysis.strategy_lab import LAB, ROOT
 
 
 def run_lab_job():
+    # Separate, bounded diagnostic process cannot stall the quote loop or prevent
+    # the prospective experiment worker from running.
+    try:
+        subprocess.run([sys.executable, '-m', 'src.analysis.indicator_audit'],
+            cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            timeout=90, check=True)
+    except (OSError, subprocess.TimeoutExpired, subprocess.CalledProcessError):
+        from src.analysis.indicator_audit import REPORT, save_report
+        save_report({"status": "failed", "validated_for_live": False,
+                     "evaluated_at": datetime.now(timezone.utc).isoformat()}, REPORT)
     try:
         completed = subprocess.run([sys.executable, '-m', 'src.analysis.continuous_lab'],
             cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1800,

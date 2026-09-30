@@ -13,6 +13,7 @@ LOCK = Lock()
 READING = ('OPERATING.md', 'SCALPING.md', 'MISTAKES.md', 'MT4.md',
            'GROWTH.md', 'LEARNING_LOG.md', 'journal/INDEX.md',
            'STRATEGY_LAB.md', 'STRATEGY_LEARNING_STATUS.md', 'KNOWLEDGE_BASE.md',
+           'INDICATOR_AUDIT.md', 'BOT_DESIGN_RESEARCH_2026-09-30.md',
            'FOREXFACTORY.md', 'VIDEO_RESEARCH_2026-09-29.md',
            'ARTICLE_RESEARCH_2026-09-29.md', 'RESEARCH_NEWS_2026-09-30.md')
 

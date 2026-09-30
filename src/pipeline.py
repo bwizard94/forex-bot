@@ -2057,6 +2057,7 @@ class TradingPipeline:
     def dashboard_state(self) -> dict[str, Any]:
         from src.analysis.sampling import sampling_policy
         from src.analysis.decision_health import decision_health
+        from src.analysis.indicator_audit import read_status as read_indicator_audit
         from src.analysis.strategy_lab import read_status as read_strategy_status
         with session_scope() as session:
             from src.data.storage import (
@@ -2125,6 +2126,7 @@ class TradingPipeline:
                     )
             return {
                 "order_value_cap_fraction": self.settings.max_order_notional_pct,
+                "indicator_audit": read_indicator_audit(),
                 "strategy_learning": read_strategy_status(),
                 "sampling_policy": sampling_policy(self.settings),
                 "decision_health": decision_health(session, utcnow()),

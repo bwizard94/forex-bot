@@ -154,3 +154,22 @@ The hourly knowledge compiler completed successfully, and the documentation-read
 audit included Forex Factory guidance and all three recent research reviews.
 Regression validation: 394 Python tests and 48 dashboard action scenarios passed.
 The scheduler remains managed by macOS independently of this chat.
+
+## Indicator diagnostics release 2.22.2 (September 30)
+
+Added a separate, bounded indicator-audit subprocess to the existing startup /
+six-hour research job. Its results are diagnostic and do not alter orders or
+risk settings. Research worker failures remain separate from trading service
+availability. See BOT_DESIGN_RESEARCH_2026-09-30.md for source review and limits.
+
+Deployment verified all startup tasks complete, fresh OANDA EUR/USD quotes,
+successful cycles, and the new audit payload in Health and Overview data.
+The initial 600-bar sample covered 77 indicator columns at six prefix checkpoints:
+no future-data mismatch detected; shorter-history numeric differences were
+reported as attention_required, without disabling trading. Both new documents
+were confirmed in the documentation-read audit and knowledge index.
+
+Practice entries were restored to their pre-reload enabled state after normal
+broker reconciliation. No broker positions were open at the pre-reload check.
+Validation: 403 Python tests, 48 dashboard action scenarios and JavaScript syntax
+checks passed. This release does not claim an improved or profitable trading edge.

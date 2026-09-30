@@ -206,4 +206,5 @@ def test_health_exposes_news_diagnostics_without_fetching(monkeypatch):
     monkeypatch.setattr(ff, "fetch_page", unexpected)
     health = next(route.endpoint for route in create_app().routes if route.path == "/api/health")
     assert health()["news_sources"]["primary"]["state"] == "blocked"
-    assert health()["version"] == "2.22.1"
+    from src import __version__
+    assert health()["version"] == __version__

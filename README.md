@@ -47,6 +47,10 @@ Version 2.22.1 reports news-source availability and fallback use in the News vie
 and health endpoint. Forex Factory requests use a five-minute retry/cache interval;
 blocked primary access does not masquerade as a working feed.
 
+The [forex bot design review](desk/BOT_DESIGN_RESEARCH_2026-09-30.md) compares
+commercial EAs and open frameworks. Release 2.22.2 adds recurring indicator
+lookahead and warm-up diagnostics, visible in Overview and Health.
+
 The [strategy lab](desk/STRATEGY_LAB.md) evaluates prospective experiments without
 automatically promoting them into broker execution. [Contextual loss review](desk/CONTEXTUAL_LOSS_REVIEW.md)
 separates observations from causal hypotheses. No profitable strategy is established.

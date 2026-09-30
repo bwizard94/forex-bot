@@ -353,9 +353,10 @@ function renderOverview(payload) {
   const learningBox = document.getElementById("strategy-learning");
   if (learningBox) {
     const lab = payload.strategy_learning || {};
+    const audit = payload.indicator_audit || {};
     const researchOnly = payload.bot?.strategy_research_only;
     const candidates = (lab.candidates || []).map(c => `${c.name}: ${c.status}`).join(" · ");
-    learningBox.textContent = `${researchOnly ? "Research only — new orders disabled. " : ""}Strategy evidence: ${lab.status || "not evaluated"}. ${candidates} Last check: ${lab.evaluated_at || "not yet"}. No validated profitable strategy. ${lab.note || ""} ${lab.autonomous_research ? `Autonomous research generation ${lab.generation}. ${lab.next_action}` : ""}`;
+    learningBox.textContent = `Indicator audit: ${audit.status || "not evaluated"} (${audit.lookahead_status || "pending"}). ` + `${researchOnly ? "Research only — new orders disabled. " : ""}Strategy evidence: ${lab.status || "not evaluated"}. ${candidates} Last check: ${lab.evaluated_at || "not yet"}. No validated profitable strategy. ${lab.note || ""} ${lab.autonomous_research ? `Autonomous research generation ${lab.generation}. ${lab.next_action}` : ""}`;
   }
 
   const healthBox = document.getElementById("decision-health");
