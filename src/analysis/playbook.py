@@ -434,11 +434,11 @@ def _ff_lines(intel: IntelReport) -> list[str]:
     ff = intel.ff or {}
     if not ff:
         return [
-            "- Forex Factory EUR/USD market hub was not fetched this cycle.",
-            "- Source: https://www.forexfactory.com/market/eurusd",
+            "- Forex Factory primary news page was not fetched this cycle.",
+            "- Source: https://www.forexfactory.com/news",
         ]
     lines = [
-        "- Source: [forexfactory.com/market/eurusd](https://www.forexfactory.com/market/eurusd)",
+        "- Source: [forexfactory.com/news](https://www.forexfactory.com/news)",
         "- Pair news reference. A headline is **not** a ticket. Red prints still sit behind the ±30 minute blackout.",
     ]
     last = ff.get("last")
@@ -675,7 +675,7 @@ def render_playbook(
             "is not a new downtrend. Crowd BUY at 1.1480 is the washout trap — not a ticket."
         ),
         (
-            "- Forex Factory [EUR/USD market](https://www.forexfactory.com/market/eurusd) is the pair news "
+            "- Forex Factory [news](https://www.forexfactory.com/news) is the pair news "
             "reference (wires + the same-week calendar that already feeds the blackout). "
             "A FF headline is not a ticket. Stand aside ±30 minutes on red EUR or USD prints."
         ),

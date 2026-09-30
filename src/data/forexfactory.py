@@ -1,18 +1,16 @@
-"""Forex Factory EUR/USD market hub as the pair news reference.
+"""Forex Factory news as the primary EUR/USD headline discovery source.
 
-Public page: https://www.forexfactory.com/market/eurusd
-
-The desk reads the pair-specific news stream and the same-week EUR/USD
-calendar (already the ±30 minute blackout source). Direct HTTP is
-Cloudflare 403; the JS shell still embeds ``/news/{id}-slug`` links, so
-titles can be recovered even when markdown is empty. A blocked fetch
-never stops the intel cycle. Headlines are context — not tickets.
+Public HTML is best-effort; blocked requests fall back to other news feeds.
+The separate calendar feed continues to supply event context.
 """
 
 from __future__ import annotations
 
 import html as html_lib
 import re
+import copy
+import time
+from threading import Lock
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -20,10 +18,11 @@ from typing import Any
 import requests
 from loguru import logger
 
-from src.data.news import CalendarEvent, Headline
+from src.data.news import CalendarEvent, Headline, _eurusd_ish
 from src.utils import utcnow
 
-PAGE_URL = "https://www.forexfactory.com/market/eurusd"
+PAGE_URL = "https://www.forexfactory.com/news"
+PAIR_URL = "https://www.forexfactory.com/market/eurusd"
 SOURCE = "Forex Factory EUR/USD"
 
 _UA = {
@@ -236,7 +235,7 @@ class FFSnapshot:
 
     def driver_lines(self) -> list[str]:
         lines: list[str] = [
-            f"Forex Factory [EUR/USD market]({PAGE_URL}) is the pair news reference — context, not a ticket."
+            f"Forex Factory [news]({PAGE_URL}) is the primary pair news reference — context, not a ticket."
         ]
         if self.last is not None:
             lines.append(f"Forex Factory last `{self.last:.4f}` (context only; OANDA is the fill).")
@@ -260,7 +259,7 @@ class FFSnapshot:
 
 
 def parse_snapshot(html: str, *, now: datetime | None = None, url: str = PAGE_URL) -> FFSnapshot:
-    """Pull news slugs (and a last if the HTML actually prints one) from the market page."""
+    """Read relevant news; quote extraction is restricted to the pair page."""
     snap = FFSnapshot(url=url, fetched_at=now or utcnow())
     if _is_challenge(html):
         snap.errors.append("Forex Factory returned a Cloudflare challenge. Live fetch skipped this cycle.")
@@ -269,8 +268,8 @@ def parse_snapshot(html: str, *, now: datetime | None = None, url: str = PAGE_UR
         snap.errors.append("Forex Factory page was empty.")
         return snap
 
-    snap.news = parse_news_links(html)
-    last = _LAST.search(html)
+    snap.news = [item for item in parse_news_links(html) if _eurusd_ish(item.title)]
+    last = _LAST.search(html) if url == PAIR_URL else None
     if last:
         snap.last = _to_float(last.group(1))
     if not snap.news and snap.last is None:
@@ -286,28 +285,63 @@ def fetch_page(timeout: float = 20.0) -> str:
     return response.text
 
 
+_FETCH_LOCK = Lock()
+_NEWS_CACHE: FFSnapshot | None = None
+_RETRY_AFTER = 0.0
+_SOURCE_STATUS: dict[str, Any] = {"state": "pending", "url": PAGE_URL, "checked_at": None}
+FETCH_INTERVAL_SECONDS = 300
+
+
+def source_status() -> dict[str, Any]:
+    """Non-blocking diagnostics; availability is not publication freshness."""
+    status = dict(_SOURCE_STATUS)
+    checked = status.get("checked_at")
+    if checked and (utcnow() - datetime.fromisoformat(checked)).total_seconds() > 2400:
+        status["state"] = "stale"
+    return status
+
+
+def _fetch_news_snapshot(*, timeout: float = 20.0) -> FFSnapshot:
+    global _NEWS_CACHE, _RETRY_AFTER, _SOURCE_STATUS
+    with _FETCH_LOCK:
+        if _NEWS_CACHE is not None and time.monotonic() < _RETRY_AFTER:
+            return copy.deepcopy(_NEWS_CACHE)
+        now = utcnow()
+        try:
+            snap = parse_snapshot(fetch_page(timeout=timeout), now=now)
+            state = "available" if snap.news else "unavailable"
+            if any("challenge" in error.lower() for error in snap.errors):
+                state = "blocked"
+        except Exception as exc:  # noqa: BLE001
+            # Do not expose request URLs, proxy details or credentials in diagnostics.
+            state = "blocked" if "blocked" in str(exc).lower() else "unavailable"
+            snap = FFSnapshot(fetched_at=now, errors=[
+                f"Forex Factory fetch failed ({state}); other headline feeds remain available."
+            ])
+        finished = utcnow()
+        _SOURCE_STATUS = {
+            "state": state, "url": PAGE_URL, "checked_at": now.isoformat(),
+            "retry_after": (finished + timedelta(seconds=FETCH_INTERVAL_SECONDS)).isoformat(),
+            "headline_count": len(snap.news), "errors": list(snap.errors),
+            "publication_time_verified": False,
+        }
+        _NEWS_CACHE = copy.deepcopy(snap)
+        _RETRY_AFTER = time.monotonic() + FETCH_INTERVAL_SECONDS
+        if snap.errors:
+            logger.warning("Forex Factory news: {}", "; ".join(snap.errors))
+        return snap
+
+
 def fetch_forexfactory_headlines(limit: int = 40) -> list[Headline]:
-    """HTTP GET the EUR/USD market page and return unique news items."""
-    try:
-        html = fetch_page()
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Forex Factory EUR/USD news fetch failed: {}", exc)
+    """Read relevant primary headlines, sharing a bounded cache with intel."""
+    if limit <= 0:
         return []
-    items = parse_news_links(html)
-    if not items:
-        logger.warning("Forex Factory EUR/USD page parsed 0 news items ({} bytes)", len(html))
-    return items[: max(1, limit)]
+    return _fetch_news_snapshot().news[:limit]
 
 
 def fetch_eurusd_snapshot(*, timeout: float = 20.0, now: datetime | None = None) -> FFSnapshot:
     now = now or utcnow()
-    snap = FFSnapshot(fetched_at=now)
-    try:
-        html = fetch_page(timeout=timeout)
-        snap = parse_snapshot(html, now=now)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Forex Factory EUR/USD fetch failed: {}", exc)
-        snap.errors.append(f"Forex Factory fetch failed: {exc}")
+    snap = _fetch_news_snapshot(timeout=timeout)
     try:
         from src.data.news import fetch_calendar
 

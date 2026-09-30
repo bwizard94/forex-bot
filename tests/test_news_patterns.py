@@ -165,3 +165,27 @@ def test_harvest_eurusd_news_does_not_crash_with_empty_network(monkeypatch) -> N
     assert items
     assert any("ECB" in h.title or "Lagarde" in h.title for h in items)
     assert any(h.source.startswith("Forex Factory") for h in items)
+
+def test_primary_forexfactory_survives_small_limit_and_failure_has_fallback(monkeypatch):
+    monkeypatch.setattr("src.data.news._rss_items", lambda *a, **k: [Headline(title="ECB backup report", source="ECB")])
+    monkeypatch.setattr("src.data.newsnow.fetch_newsnow_headlines", lambda **k: [])
+    monkeypatch.setattr("src.data.forexfactory.fetch_forexfactory_headlines", lambda **k: [Headline(title="Fed primary report", source="Forex Factory EUR/USD")])
+    assert harvest_eurusd_news(limit=1)[0].source == "Forex Factory EUR/USD"
+    def fail(**kwargs):
+        raise RuntimeError("blocked")
+    monkeypatch.setattr("src.data.forexfactory.fetch_forexfactory_headlines", fail)
+    assert harvest_eurusd_news(limit=1)[0].source == "ECB"
+    assert harvest_eurusd_news(limit=0) == []
+
+def test_empty_collection_and_stale_collection_are_visible(monkeypatch):
+    from src.data import news
+    from datetime import timedelta
+    monkeypatch.setattr(news, "_rss_items", lambda *a, **k: [])
+    monkeypatch.setattr("src.data.newsnow.fetch_newsnow_headlines", lambda **k: [])
+    monkeypatch.setattr("src.data.forexfactory.fetch_forexfactory_headlines", lambda **k: [])
+    monkeypatch.setattr(news, "_HARVEST_STATUS", {})
+    assert news.harvest_eurusd_news() == []
+    assert news.news_source_status()["harvest"]["state"] == "unavailable"
+    checked = news.utcnow()
+    monkeypatch.setattr(news, "utcnow", lambda: checked + timedelta(minutes=41))
+    assert news.news_source_status()["harvest"]["state"] == "stale"

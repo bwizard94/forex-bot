@@ -1,6 +1,14 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def reset_primary_cache(monkeypatch):
+    monkeypatch.setattr("src.data.forexfactory._NEWS_CACHE", None)
+    monkeypatch.setattr("src.data.forexfactory._RETRY_AFTER", 0.0)
+    monkeypatch.setattr("src.data.forexfactory._SOURCE_STATUS", {"state": "pending", "checked_at": None})
 
 from src.analysis.intel import (
     analyze_drivers,
@@ -9,6 +17,7 @@ from src.analysis.intel import (
 )
 from src.analysis.playbook import render_playbook
 from src.data.forexfactory import (
+    PAIR_URL,
     fetch_eurusd_snapshot,
     parse_news_links,
     parse_snapshot,
@@ -54,7 +63,7 @@ def test_parse_news_links_dedupes_hit_suffix_and_prefers_anchor() -> None:
 
 
 def test_parse_snapshot_reads_news_and_last() -> None:
-    snap = parse_snapshot(FIXTURE, now=datetime(2026, 9, 19, 5, 30, tzinfo=timezone.utc))
+    snap = parse_snapshot(FIXTURE, url=PAIR_URL, now=datetime(2026, 9, 19, 5, 30, tzinfo=timezone.utc))
     assert snap.last == 1.14852
     assert len(snap.news) >= 4
     drivers = " ".join(snap.driver_lines())
@@ -85,7 +94,7 @@ def test_fetch_failure_is_empty(monkeypatch) -> None:
 
 def test_ff_intel_playbook_and_slack() -> None:
     now = datetime(2026, 9, 19, 5, 30, tzinfo=timezone.utc)
-    snap = parse_snapshot(FIXTURE, now=now)
+    snap = parse_snapshot(FIXTURE, url=PAIR_URL, now=now)
     snap.events = [
         CalendarEvent(
             title="USD CPI YoY",
@@ -136,3 +145,65 @@ def test_ff_intel_playbook_and_slack() -> None:
     assert "FOREXFACTORY.md" in blocks
     drivers = analyze_drivers([], [], [], now=now, ff=snap)
     assert any("CPI" in d or "red print" in d.lower() or "Forex Factory" in d for d in drivers)
+
+def test_primary_news_filters_unrelated_items_and_never_extracts_quote():
+    snap = parse_snapshot(FIXTURE + '<a href="/news/123456-australian-building-approvals-fall">Australian building approvals fall</a>')
+    assert snap.last is None
+    assert snap.news
+    assert not any("Australian" in item.title for item in snap.news)
+    assert snap.url == "https://www.forexfactory.com/news"
+
+
+def test_headline_fetch_rejects_challenge_even_with_news_links(monkeypatch):
+    from src.data.forexfactory import fetch_forexfactory_headlines
+    monkeypatch.setattr("src.data.forexfactory.fetch_page", lambda: "Just a moment " + FIXTURE)
+    assert fetch_forexfactory_headlines() == []
+    assert fetch_forexfactory_headlines(limit=0) == []
+
+def test_blocked_source_backs_off_and_recovers(monkeypatch):
+    from src.data import forexfactory as ff
+    calls = []
+    clock = [100.0]
+    def fetch(**kwargs):
+        calls.append(1)
+        if len(calls) == 1:
+            raise RuntimeError("Forex Factory blocked (403)")
+        return FIXTURE
+    monkeypatch.setattr(ff, "fetch_page", fetch)
+    monkeypatch.setattr(ff.time, "monotonic", lambda: clock[0])
+    assert ff.fetch_forexfactory_headlines() == []
+    assert ff.source_status()["state"] == "blocked"
+    assert ff.fetch_forexfactory_headlines() == []
+    assert len(calls) == 1
+    clock[0] += ff.FETCH_INTERVAL_SECONDS + 1
+    assert ff.fetch_forexfactory_headlines()
+    assert ff.source_status()["state"] == "available"
+    assert len(calls) == 2
+
+
+def test_cached_news_isolation_and_stale_diagnostics(monkeypatch):
+    from src.data import forexfactory as ff
+    from unittest.mock import Mock
+    fetch = Mock(return_value=FIXTURE)
+    monkeypatch.setattr(ff, "fetch_page", fetch)
+    first = ff._fetch_news_snapshot()
+    first.news.clear()
+    assert ff.fetch_forexfactory_headlines()
+    fetch.assert_called_once()
+    monkeypatch.setattr(ff, "utcnow", lambda: first.fetched_at + timedelta(minutes=41))
+    assert ff.source_status()["state"] == "stale"
+
+
+def test_health_exposes_news_diagnostics_without_fetching(monkeypatch):
+    from types import SimpleNamespace
+    from src.dashboard.app import create_app
+    from src.data import forexfactory as ff
+    monkeypatch.setattr("src.dashboard.app.get_pipeline",
+                        lambda: SimpleNamespace(_warm=True, trading_enabled=False))
+    monkeypatch.setattr(ff, "_SOURCE_STATUS", {"state": "blocked", "checked_at": None})
+    def unexpected(**kwargs):
+        raise AssertionError("Health must not fetch the network")
+    monkeypatch.setattr(ff, "fetch_page", unexpected)
+    health = next(route.endpoint for route in create_app().routes if route.path == "/api/health")
+    assert health()["news_sources"]["primary"]["state"] == "blocked"
+    assert health()["version"] == "2.22.1"

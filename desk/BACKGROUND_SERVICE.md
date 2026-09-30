@@ -134,3 +134,23 @@ service returned `ok:true`, `warm:true`, `trading:false`, and the new
 still running, confirming optional enrichment no longer blocks its availability.
 The initial scan, desk-note task, Sheets dispatch and tape task had returned with
 no reported failures at verification. Entries remain paused until explicitly resumed.
+
+## Research and news release 2.22.1 (September 30)
+
+Deployed through the existing LaunchAgent after tests passed. Practice entries
+were briefly paused for the reload and their previously enabled state was
+restored through the normal reconciliation control. Broker inspection before
+reload confirmed no open trades. No risk or strategy parameters were changed.
+
+Post-deployment checks confirmed version 2.22.1, warm service, all startup tasks
+complete without reported failures, successful pipeline cycles and fresh OANDA
+EUR/USD quotes. The news harvest returned 40 headlines from Yahoo, ECB,
+Federal Reserve, Google News and NewsNow sources. Forex Factory direct HTTP
+remained blocked; Health and the News dashboard explicitly report fallback use.
+This is an operational service with a degraded preferred provider, not proof of
+unrestricted access to every source or of a profitable trading strategy.
+
+The hourly knowledge compiler completed successfully, and the documentation-read
+audit included Forex Factory guidance and all three recent research reviews.
+Regression validation: 394 Python tests and 48 dashboard action scenarios passed.
+The scheduler remains managed by macOS independently of this chat.

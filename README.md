@@ -37,6 +37,16 @@ The [five-video research review](desk/VIDEO_RESEARCH_2026-09-29.md) records
 timestamped source findings and proposed EUR/USD experiments. These proposals
 are documented research, not activated strategies.
 
+The [13-source article review](desk/ARTICLE_RESEARCH_2026-09-29.md) separates
+strategy education, machine-learning studies, long-term macro research and dated
+market commentary, with access limitations and proposed validation work.
+
+The [additional research and news review](desk/RESEARCH_NEWS_2026-09-30.md)
+records four new works, one duplicate and the [Forex Factory primary news policy](desk/FOREXFACTORY.md).
+Version 2.22.1 reports news-source availability and fallback use in the News view
+and health endpoint. Forex Factory requests use a five-minute retry/cache interval;
+blocked primary access does not masquerade as a working feed.
+
 The [strategy lab](desk/STRATEGY_LAB.md) evaluates prospective experiments without
 automatically promoting them into broker execution. [Contextual loss review](desk/CONTEXTUAL_LOSS_REVIEW.md)
 separates observations from causal hypotheses. No profitable strategy is established.

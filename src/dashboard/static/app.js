@@ -797,6 +797,14 @@ async function refreshNews() {
         `${payload.bot.news_scan} harvest from Forex Factory, NewsNow, Google News, Yahoo/ECB/Fed, and intel hubs. ` +
         `Each story is classified, a EUR/USD lean is stored with the spot mid, then the 1-hour M5 close is checked.`;
     }
+    if (meta && payload.news_sources) {
+      const primary = payload.news_sources.primary || {};
+      const harvest = payload.news_sources.harvest || {};
+      meta.textContent += ` Forex Factory: ${primary.state || "pending"}. ` +
+        `Last check: ${primary.checked_at || "not checked"}. ` +
+        `News collection: ${harvest.state || "pending"} (${harvest.headline_count || 0} headlines).` +
+        (harvest.fallback_active ? " Backup feeds supplied this collection." : "");
+    }
     const patterns = payload.patterns || [];
     if (body) {
       if (!patterns.length) {

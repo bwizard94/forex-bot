@@ -1,73 +1,55 @@
-# Forex Factory — EUR/USD market news
+# Forex Factory — primary news discovery source
 
-Standing notes for the EUR/USD specialist. Live wires are rewritten into
-`desk/EURUSD_PLAYBOOK.md` every intel cycle and into the 05:00 UTC news
-book. This file is the desk's memory of **how to read**
-[forexfactory.com/market/eurusd](https://www.forexfactory.com/market/eurusd).
+Updated 30 September 2026 by operator request.
+Primary: [Forex Factory news](https://www.forexfactory.com/news).
+Secondary manual reference: [EUR/USD market hub](https://www.forexfactory.com/market/eurusd).
 
-Direct HTTP is Cloudflare 403. A blocked fetch never stops the intel
-cycle. The JS shell still embeds `/news/{id}-slug` links, so titles can
-be recovered even when the rendered markdown is empty. The week calendar
-JSON on `nfs.faireconomy.media` is the same feed that already runs the
-±30 minute blackout.
+## Automated workflow
 
-The skim below is from 19 September 2026.
+The general news harvester attempts Forex Factory first, filters its headlines
+for EUR/USD and macro relevance, then collects the existing official and
+supplementary feeds. Deduplication and result limits preserve this source priority.
+The intel snapshot uses the same news endpoint and attaches the separate
+High/Medium EUR/USD calendar feed. Existing schedules and execution controls
+are unchanged. Relevant USD cross headlines may supply dollar context.
 
-## What the page is
+Source: src/data/forexfactory.py and src/data/news.py.
+The parser retains Forex Factory story URLs, rejects challenge pages even when
+they contain apparent news links, and never treats a number on the general news
+page as a EUR/USD quote. Pair-page quote extraction is only permitted when the
+caller explicitly identifies the EUR/USD hub.
 
-Forex Factory's EUR/USD **market hub** is the pair's news desk:
+HTTP blocks, timeouts and empty results are logged. Other feeds remain available;
+calendar retrieval is attempted separately. A successful web-browser visit does
+not prove unattended HTTP access works. Do not bypass a site's access challenge.
 
-- Live quote (JS scanner — not the fill)
-- Pair news stream (Fed, ECB speakers, geopolitics that can bid USD)
-- The same-week economic calendar (red/orange EUR and USD prints)
-- Related FF threads
+## Evidence and freshness
 
-It is slower than OANDA M5 and it is **not an order book**. Use it to
-know what the street is reading and which print is next. The desk still
-only trades EUR/USD. A headline is never a ticket.
+Forex Factory aggregates multiple publishers and community discussion. Primary
+here means first source checked, not guaranteed factual correctness.
+Inspect the original report behind a story; use the Fed, ECB and relevant
+statistical agency for release verification. Distinguish factual release,
+attributed interpretation and community opinion.
 
-## How the bot uses it
+The automated parser currently stores headline text, source label and Forex Factory
+URL. It does not yet extract verified publication times or original publisher
+URLs. Unknown publication time remains unknown; retrieval time must not be used
+to claim a story is breaking news. Slug-derived titles can be incomplete.
 
-Every 20 minutes the intel loop, and every morning at 05:00 UTC the news
-scan, try the public HTML and:
+A headline alone does not establish direction, entry quality or profitability.
+Use news as context within the configured strategy and event controls. Research
+ideas and unresolved limitations are recorded in
+[the September 30 review](RESEARCH_NEWS_2026-09-30.md).
 
-1. Parse `/news/{id}-slug` links (and anchor text when the HTML has it).
-2. Attach upcoming High/Medium EUR and USD calendar rows from the week
-   JSON. That is the same blackout source `NewsDesk` already uses.
-3. Write the wires into the playbook and into `news_items` with a
-   predicted lean. Later M5 closes score whether the lean was any good.
-4. A Cloudflare block is logged, not a halt. Calendar JSON can still
-   land even when the market page does not.
+## Availability diagnostics (2.22.1)
 
-Source module: `src/data/forexfactory.py`.
+The News dashboard and /api/health expose primary-source state separately from
+service health, plus the last completed harvest's source counts and fallback use.
+Missing checks are pending; old checks become stale after 40 minutes. This tracks
+fetch availability, not the age or truth of a headline. Both headline and intel
+requests share a five-minute cache/retry interval, including blocked attempts.
+No challenge solver, cookie harvesting or access-control workaround is used.
 
-## Skim — 19 September 2026
-
-Wires on the pair hub (titles recovered from slugs; context, not tickets):
-
-| Story | Read for this pair |
-| --- | --- |
-| The Fed is fighting the wrong war on | Fed-path commentary. USD bid if the street reads hawkish; not a scalp trigger. |
-| ECB's Kazaks: if our baseline materializes | ECB speaker. Hawkish language supports EUR; dovish baseline talk caps it. |
-| ECB's Lagarde: rates won't move in lockstep with | Lagarde decoupling the ECB from the Fed. Mixed for EUR/USD until H1 reacts. |
-| ECB's Nagel unlikely to get German nomination | Personnel, not a print. Log it; do not size it. |
-| The Fed hasn't been this terse since 2007 | Fed communication. Tight-lipped FOMC usually keeps USD bid until the next print. |
-| Three words from Kevin Warsh / Warsh did well but where does the Fed | Warsh is Fed-path colour. Classify as **fed**. Not a ticket. |
-| WH confirms Trump to sign Russia sanctions bill | Geopolitics / risk. USD often catches the first bid. Wait for H1. |
-
-Net: the pair hub is **Fed + ECB speakers** this tape, plus a sanctions
-risk headline. That matches the existing blackout book (FOMC, Lagarde,
-CPI, NFP). Do not short a washout because a Fed wire sounded hawkish.
-
-## How to use it without getting hurt
-
-- Forex Factory news is **context**. Ox scalp + H1 still fire the ticket.
-- Red EUR or USD prints: stand aside ±30 minutes. Trade the H1 reaction,
-  not the first tick.
-- Speaker headlines (Lagarde, Kazaks, Nagel, Warsh, Powell) go in the
-  news book as `ecb` / `fed`. Commentary without a print is logged so
-  the desk can see it does not lead the tape.
-- Cloudflare may empty the page. The calendar JSON is the reliable half
-  of this hub. Missing wires are not a reason to sit the whole session.
-- Never size from a FF title. Never skip the blackout because a category
-  is “usually right.”
+The direct page returned HTTP 403 during deployment preparation; the historical
+RSS hostname could not be reached. Forex Factory remains the preferred source,
+with the existing supplementary feeds providing operational news coverage.

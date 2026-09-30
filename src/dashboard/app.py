@@ -77,7 +77,8 @@ def create_app() -> FastAPI:
     @app.get("/api/health")
     def health() -> dict:
         pipe = get_pipeline()
-        return {"ok": True, "warm": pipe._warm, "trading": pipe.trading_enabled,
+        from src.data.news import news_source_status
+        return {"news_sources": news_source_status(), "version": __version__, "ok": True, "warm": pipe._warm, "trading": pipe.trading_enabled,
                 "health_scope": "Service availability only; not strategy profitability or learning quality",
                 "startup_tasks": getattr(pipe, "startup_tasks", {"state": "unknown"}),
                 "documentation": getattr(pipe, "documentation_status", {"ok": False, "state": "pending"})}
@@ -363,6 +364,7 @@ def create_app() -> FastAPI:
 
     @app.get("/api/news")
     def news_book() -> dict:
+        from src.data.news import news_source_status
         from src.analysis.news_patterns import pattern_rows, recent_news
         from src.analysis.playbook import read_news, read_news_patterns
 
@@ -373,6 +375,7 @@ def create_app() -> FastAPI:
         return {
             "ok": True,
             "items": items,
+            "news_sources": news_source_status(),
             "patterns": patterns,
             "guide": read_news(),
             "patterns_markdown": read_news_patterns(),

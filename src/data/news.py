@@ -1,6 +1,6 @@
 """EUR/USD headlines and high-impact calendar events.
 
-Sources are public (Forex Factory EUR/USD market hub + week JSON, Yahoo
+Sources are public (Forex Factory primary news page + week JSON, Yahoo
 EURUSD RSS, ECB/Fed press RSS, NewsNow). Failures are swallowed so a
 dead feed never blocks the desk.
 """
@@ -259,9 +259,30 @@ def fetch_headlines() -> list[Headline]:
     return harvest_eurusd_news(limit=40, deep=False)
 
 
+_HARVEST_STATUS: dict[str, Any] = {"state": "pending", "checked_at": None}
+
+
+def news_source_status() -> dict[str, Any]:
+    from src.data.forexfactory import source_status
+    harvest = dict(_HARVEST_STATUS)
+    checked = harvest.get("checked_at")
+    if checked and (utcnow() - datetime.fromisoformat(checked)).total_seconds() > 2400:
+        harvest["state"] = "stale"
+    return {"primary": source_status(), "harvest": harvest}
+
+
 def harvest_eurusd_news(*, limit: int = 80, deep: bool = False) -> list[Headline]:
     """Pull a wide EUR/USD headline set. ``deep`` is the 05:00 UTC / on-demand scan."""
+    if limit <= 0:
+        return []
+    global _HARVEST_STATUS
     collected: list[Headline] = []
+    try:
+        from src.data.forexfactory import fetch_forexfactory_headlines
+
+        collected.extend(fetch_forexfactory_headlines(limit=80 if deep else 20))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Forex Factory EUR/USD harvest failed: {}", exc)
     rss_limit = 20 if deep else 8
     for url, source, cap in (
         (YAHOO_EURUSD, "Yahoo EURUSD", rss_limit),
@@ -280,12 +301,6 @@ def harvest_eurusd_news(*, limit: int = 80, deep: bool = False) -> list[Headline
         collected.extend(fetch_newsnow_headlines(limit=120 if deep else 24))
     except Exception as exc:  # noqa: BLE001
         logger.warning("NewsNow EUR/USD harvest failed: {}", exc)
-    try:
-        from src.data.forexfactory import fetch_forexfactory_headlines
-
-        collected.extend(fetch_forexfactory_headlines(limit=80 if deep else 20))
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Forex Factory EUR/USD harvest failed: {}", exc)
     relevant = [h for h in collected if _eurusd_ish(h.title)]
     rest = [h for h in collected if h not in relevant]
     seen: set[str] = set()
@@ -298,6 +313,15 @@ def harvest_eurusd_news(*, limit: int = 80, deep: bool = False) -> list[Headline
         out.append(h)
         if len(out) >= limit:
             break
+    from collections import Counter
+    from src.data.forexfactory import source_status
+    primary_available = source_status().get("state") == "available"
+    _HARVEST_STATUS = {
+        "state": "available" if out else "unavailable",
+        "checked_at": utcnow().isoformat(), "headline_count": len(out),
+        "sources": dict(Counter(h.source for h in out)),
+        "fallback_active": bool(out) and not primary_available,
+    }
     return out
 
 
