@@ -64,6 +64,16 @@ def render_trade(trade, journal):
                       *('- Unknown: '+v for v in review['unknowns']), review['recommendation']])
     context = journal.entry_context or {}
     risk = context.get('initial_risk') or {}
+    excursion = context.get('sampled_excursion') or {}
+    if excursion:
+        lines.extend(['', '## Observed trade path', '',
+                      f'Sampled favorable excursion: {text(excursion.get("mfe_r"))} R',
+                      f'Sampled adverse excursion: {text(excursion.get("mae_r"))} R',
+                      f'Executable quote samples: {text(excursion.get("samples"))}',
+                      f'First observation: {text(excursion.get("first_quote_at"))}',
+                      f'Last observation: {text(excursion.get("last_quote_at"))}',
+                      f'Maximum sample gap (seconds): {text(excursion.get("max_sample_gap_seconds"))}',
+                      'Extremes are sampled lower bounds relative to original entry risk; missed ticks are unknown.'])
     policy = (context.get('decision_evidence') or {}).get('sampling_policy') or {}
     lines.extend(['', '## Trading policy', '', f'Policy: {policy.get("name", "Not recorded")}',
                   f'Trial status at decision: {policy.get("status", "Not recorded")}',

@@ -26,6 +26,18 @@ def _build_scheduler(pipeline) -> BackgroundScheduler:
                       next_run_time=datetime.now(timezone.utc), id="strategy_lab",
                       max_instances=1, coalesce=True)
 
+    from src.analysis.research_jobs import run_report, archive_calendar
+    from src.analysis.excursion_tracker import observe
+    scheduler.add_job(lambda: observe(pipeline), "interval", seconds=15,
+                      id="excursion_observer", max_instances=1, coalesce=True)
+    scheduler.add_job(lambda: archive_calendar(pipeline), "interval", minutes=5,
+                      next_run_time=datetime.now(timezone.utc), id="research_calendar_archive",
+                      max_instances=1, coalesce=True)
+    for kind, hours in (('attribution', 1), ('costs', 6), ('experiments', 1)):
+        scheduler.add_job(lambda kind=kind: run_report(kind, pipeline.settings.model_copy(deep=True)),
+                          'interval', hours=hours, next_run_time=datetime.now(timezone.utc),
+                          id='diagnostic_'+kind, max_instances=1, coalesce=True)
+
     def minute_job() -> None:
         now = datetime.now(timezone.utc)
         tfs = ["M1", "M5", "H1"]

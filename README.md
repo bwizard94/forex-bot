@@ -76,3 +76,23 @@ families, corrects exit attribution and experiment counts, and replaces causal
 claims in contextual journals with evidence and hypotheses. Reversal/re-entry
 filters are evaluated in shadow and prospective research; the diagnostic comparison
 did not establish improvement. See [release evidence](desk/RELEASE_2.23.0.md).
+
+The [bot-construction article review](desk/ARTICLE_BOT_BUILDING_2026-09-30.md)
+compares ten supplied links (nine readable) with the implementation and prioritizes
+policy-specific performance measurement, execution costs and replay agreement.
+
+The [public repository code review](desk/GITHUB_REPOSITORY_REVIEW_2026-09-30.md)
+compares six unique projects, records concrete validation and ownership weaknesses,
+and identifies testing and attribution improvements worth evaluating.
+
+The [research validation upgrade](desk/RESEARCH_VALIDATION_UPGRADE_2026-09-30.md)
+adds evaluator controls, a standalone five-scenario cost matrix and matched-context
+performance/cost attribution. These reports do not change trading policy.
+
+[Release 2.24.0](desk/RELEASE_2.24.0.md) schedules attribution hourly and active-settings
+cost diagnostics every six hours, with rejection reasons, matched-version comparisons
+and separate execution research for news, portfolio caps and fees.
+
+[Release 2.25.0](desk/RELEASE_2.25.0.md) adds loss concentration reports, ongoing
+sampled trade excursions, separate prospective entry/exit experiments, measured
+execution research, and evidence-gated promotion/rollback plans.

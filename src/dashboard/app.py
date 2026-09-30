@@ -79,14 +79,16 @@ def create_app() -> FastAPI:
         pipe = get_pipeline()
         from src.data.news import news_source_status
         from src.analysis.indicator_audit import read_status
-        return {"indicator_audit": read_status(), "news_sources": news_source_status(), "version": __version__, "ok": True, "warm": pipe._warm, "trading": pipe.trading_enabled,
+        from src.analysis.research_jobs import read_status as diagnostic_status
+        return {"research_diagnostics": diagnostic_status(), "indicator_audit": read_status(), "news_sources": news_source_status(), "version": __version__, "ok": True, "warm": pipe._warm, "trading": pipe.trading_enabled,
                 "health_scope": "Service availability only; not strategy profitability or learning quality",
                 "startup_tasks": getattr(pipe, "startup_tasks", {"state": "unknown"}),
                 "documentation": getattr(pipe, "documentation_status", {"ok": False, "state": "pending"})}
 
     @app.get("/api/state")
     def state() -> dict:
-        return get_pipeline().dashboard_state()
+        from src.analysis.research_jobs import read_status as diagnostic_status
+        return get_pipeline().dashboard_state() | {"research_diagnostics": diagnostic_status()}
 
     @app.get("/api/chart")
     def chart(

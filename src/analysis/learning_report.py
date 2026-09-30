@@ -23,6 +23,10 @@ def report_database(path: Path) -> dict:
     try:
         with Session(engine) as session:
             report = study_book(session, settings=Settings()).as_dict()
+            from src.analysis.context_report import contextual_report
+            report['contextual_attribution'] = contextual_report(session)
+            from src.analysis.loss_attribution import loss_attribution
+            report['loss_attribution'] = loss_attribution(session)
             reasons = Counter()
             versions = Counter()
             actions = Counter()
