@@ -34,6 +34,11 @@ def propose(base, history):
     """Bounded hypotheses. No risk, sizing, execution, or cost assumptions are tuned."""
     tried = {c['fingerprint'] for h in history for c in h.get('candidates', [])}
     choices = []
+    if not base.get('confirmed_entry_policy', False):
+        confirmation = dict(base, confirmed_entry_policy=True)
+        choices.append({'name':'confirmed-reversals', 'settings':confirmation,
+                        'fingerprint':fingerprint(confirmation),
+                        'hypothesis':'Test local reversal confirmation and fresh post-loss entries on prospective data; diagnostic late-period evidence was negative'})
     for stop in (5., 6., 8., 10.):
         for confluence in sorted({base['min_confluence'], min(10, base['min_confluence']+1),
                                   min(10, base['min_confluence']+2)}):
@@ -131,7 +136,10 @@ def run(directory=lab.LAB):
         # start with future data and never claim that legacy history is unseen.
         result=lab.run(active)
         result.update({'autonomous_research':True,'generation':state['generation'],
-            'experiment_id':state['active_id'],'completed_experiments':len(state['history']),
+            'experiment_id':state['active_id'],
+            'archived_experiments':len(state['history']),
+            'invalidated_experiments':sum(h.get('reason')=='source_changed' for h in state['history']),
+            'completed_experiments':sum(h.get('reason')=='completed' and h.get('status') in TERMINAL for h in state['history']),
             'research_champion_only':True,
             'next_action':'Automatically evaluate, archive outcomes, and register the next experiment; no operator prompt required.',
             'execution_policy':('New orders disabled by research-only mode. ' if get_settings().strategy_research_only else 'Operator-authorized practice trading; existing risk gates apply. ')+ 'Simulated selection cannot change broker settings or enable orders.'})
@@ -139,12 +147,14 @@ def run(directory=lab.LAB):
         lines=['# Autonomous strategy learning','',f"Generation: **{state['generation']}** · status: **{result['status']}**",'',
                'Runs at startup and every six hours. New experiments start automatically after completion or invalidation.',
                result['execution_policy'], '',
-               f"Last evaluation: {result['evaluated_at']}", '', '## Completed experiments', '']
+               f"Last evaluation: {result['evaluated_at']}", '',
+               f"Completed evaluations: {result['completed_experiments']}; invalidated: {result['invalidated_experiments']}; archived: {result['archived_experiments']}",
+               '', '## Experiment history', '']
         for h in state['history']:
             lines.append(f"- {h['experiment_id']}: {h['reason']}; research winner: {h['research_winner'] or 'none'}")
             for c in h['candidates']:
                 lines.append(f"  - {c['name']}: {c['outcome']['status']}; "+', '.join(c['outcome'].get('reasons',[])))
-        if not state['history']:
+        if not result['completed_experiments']:
             lines.append('No completed prospective experiment yet. No improvement has been established.')
         lines.extend(['','Experiment specifications and evidence: `data/research/strategy-lab/experiments/`.',
                       'Persistent controller and outcome history: `data/research/strategy-lab/controller.json`.',''])

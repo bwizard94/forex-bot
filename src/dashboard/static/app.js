@@ -162,7 +162,7 @@ const SHEETS = {
       ["stoch_k", "Stoch", "num1"],
       ["adx", "ADX", "num1"],
       ["cci", "CCI", "num1"],
-      ["strength", "Str", "raw"],
+      ["strength", "Support", "raw"],
       ["skipped", "Skip", "bool"],
       ["skip_reason", "Skip reason", "wrap"],
       ["reason", "Why", "wrap"],
@@ -356,7 +356,8 @@ function renderOverview(payload) {
     const audit = payload.indicator_audit || {};
     const researchOnly = payload.bot?.strategy_research_only;
     const candidates = (lab.candidates || []).map(c => `${c.name}: ${c.status}`).join(" · ");
-    learningBox.textContent = `Indicator audit: ${audit.status || "not evaluated"} (${audit.lookahead_status || "pending"}). ` + `${researchOnly ? "Research only — new orders disabled. " : ""}Strategy evidence: ${lab.status || "not evaluated"}. ${candidates} Last check: ${lab.evaluated_at || "not yet"}. No validated profitable strategy. ${lab.note || ""} ${lab.autonomous_research ? `Autonomous research generation ${lab.generation}. ${lab.next_action}` : ""}`;
+    const counts = `Completed evaluations: ${lab.completed_experiments ?? "unknown"}; invalidated: ${lab.invalidated_experiments ?? "unknown"}. `;
+    learningBox.textContent = `Indicator audit: ${audit.status || "not evaluated"} (${audit.lookahead_status || "pending"}). ` + counts + `${researchOnly ? "Research only — new orders disabled. " : ""}Strategy evidence: ${lab.status || "not evaluated"}. ${candidates} Last check: ${lab.evaluated_at || "not yet"}. No validated profitable strategy. Support scores are not win probabilities. ${lab.note || ""} ${lab.autonomous_research ? `Autonomous research generation ${lab.generation}. ${lab.next_action}` : ""}`;
   }
 
   const healthBox = document.getElementById("decision-health");

@@ -26,7 +26,7 @@ def json_safe(value):
 @lru_cache(maxsize=1)
 def code_version():
     root = Path(__file__).resolve().parents[1]
-    files = ('analysis/signals.py', 'analysis/indicators.py', 'analysis/growth.py',
+    files = ('analysis/signals.py', 'analysis/entry_confirmation.py', 'analysis/indicators.py', 'analysis/growth.py',
              'analysis/reflection.py', 'analysis/evidence.py', 'execution/risk_manager.py',
              'execution/paper_broker.py',
              'analysis/entry_quality.py', 'analysis/sampling.py', 'analysis/mistakes.py', 'pipeline.py', 'config.py')
@@ -38,7 +38,7 @@ def code_version():
 
 
 def decision_context(*, settings, quote, account, frames, captured_at):
-    names = ('trading_style', 'signal_timeframe', 'htf_bias_timeframe', 'min_stop_pips', 'practice_broker_market_hours',
+    names = ('trading_style', 'signal_timeframe', 'htf_bias_timeframe', 'min_stop_pips', 'practice_broker_market_hours', 'confirmed_entry_policy',
              'atr_sl_multiplier', 'atr_tp1_multiplier', 'atr_tp2_multiplier',
              'scalp_max_spread_pips', 'news_blackout_minutes', 'friday_flat_hour',
              'monday_open_skip_minutes', 'require_htf_trend', 'fade_strength_min',

@@ -17,3 +17,15 @@ variables:
   SECRET_DETECTION_ENABLED: 'true'
 secret_detection:
   stage: secret-detection
+python_regressions:
+  stage: test
+  image: python:3.12-slim
+  script:
+    - pip install -r requirements.txt
+    - python -m pytest -q
+dashboard_regressions:
+  stage: test
+  image: node:22-slim
+  script:
+    - node tests/dashboard_actions.cjs
+    - node --check src/dashboard/static/app.js

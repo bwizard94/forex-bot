@@ -1,5 +1,7 @@
 # EUR/USD scalp book — Ox Securities
 
+> Historical educational notes. Fixed timeframe, risk, session, score and exclusion examples below are not current runtime policy. [OPERATING.md](OPERATING.md) takes precedence; negative outcomes alone do not establish these mistake labels or authorize a broad strategy ban.
+
 Source: [Most Profitable Trading Strategies](https://oxsecurities.com/most-profitable-trading-strategies/) (Ox Securities).
 
 The page's three "most profitable" recipes are **scalping**, a weekly candlestick fade, and Parabolic SAR + EMA 5/25/50. This desk **adopts the scalp**. The weekly candlestick (100–140 point stop, 50–70 point target) is position trading with a worse-than-1 R:R — we do not take it. Parabolic + triple EMA is a trend system; Supertrend + EMA 9/21 already covers that confirmation.

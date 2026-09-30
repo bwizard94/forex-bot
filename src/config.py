@@ -101,6 +101,7 @@ class Settings(BaseSettings):
     max_units_per_trade: int = 100_000
     max_order_notional_pct: float | None = Field(default=None, gt=0, le=1)
     min_confluence: int = 2
+    confirmed_entry_policy: bool = False  # prospective candidate; evidence does not support promotion yet
     atr_sl_multiplier: float = 1.0
     atr_tp1_multiplier: float = 1.2
     atr_tp2_multiplier: float = 2.0

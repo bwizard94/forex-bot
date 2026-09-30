@@ -70,3 +70,9 @@ adjust them for your machine before installing. Closing a chat does not stop an
 installed background service, but the host must remain running and connected.
 
 Remotes: [GitHub](https://github.com/bwizard94/forex-bot) · [GitLab](https://gitlab.com/bwizard/forex-bot).
+
+Release 2.23.0 fixes selected-direction support scores, caps correlated indicator
+families, corrects exit attribution and experiment counts, and replaces causal
+claims in contextual journals with evidence and hypotheses. Reversal/re-entry
+filters are evaluated in shadow and prospective research; the diagnostic comparison
+did not establish improvement. See [release evidence](desk/RELEASE_2.23.0.md).

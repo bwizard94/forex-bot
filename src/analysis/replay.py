@@ -134,6 +134,14 @@ def replay(m5, h1, d1, settings, *, step=1, lookback=8000, max_trades=500, costs
                         d1_bars=completed_bars(d1,decision,'1d',d1_history),
                         settings=settings, now=decision.to_pydatetime(), heavy=True)
         sig.source = 'history'
+        if settings.confirmed_entry_policy and sig.action in {'BUY','SELL'} and closed:
+            from src.analysis.entry_confirmation import reentry_reason
+            last = closed[-1]
+            # OHLC does not give an intrabar exit time: require a bar starting
+            # after the entire exit candle to avoid using pre-exit structure.
+            prior = {'side':last['side'], 'pl':last['pips'], 'closed_at':last['closed_at'] + duration}
+            if reentry_reason(sig.action, frame.iloc[:i+1], timeframe, prior):
+                continue
         if sig.action in {'BUY','SELL'} and sig.entry and sig.stop_loss and sig.take_profit_1:
             kept.append(sig)
             pending = sig, decision

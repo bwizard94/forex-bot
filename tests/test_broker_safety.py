@@ -30,6 +30,33 @@ def owned(**extra):
     return {'id':'7','state':'OPEN','currentUnits':'100','clientExtensions':{'id':'fs-test'},**extra}
 
 
+@pytest.mark.parametrize('reason,expected', [
+    ('STOP_LOSS_ORDER','stop_loss'), ('TAKE_PROFIT_ORDER','take_profit'),
+    ('MARKET_ORDER_TRADE_CLOSE','broker_market_close'), ('UNKNOWN','broker_closed')])
+def test_exit_attribution_uses_final_matching_broker_fill(reason,expected):
+    b=broker([{'transaction':{'id':'12','type':'ORDER_FILL','reason':reason,
+                            'tradesClosed':[{'tradeID':'7'}]}}])
+    assert b.confirmed_close_reason(owned(state='CLOSED',closingTransactionIDs=['12','9']))==expected
+    assert b.client.request.call_count==1
+
+
+@pytest.mark.parametrize('fill', [
+    {'id':'12','type':'ORDER_FILL','reason':'STOP_LOSS_ORDER','tradesClosed':[{'tradeID':'8'}]},
+    {'id':'12','type':'ORDER_FILL','reason':'TAKE_PROFIT_ORDER','tradeReduced':{'tradeID':'7'}},
+    {'id':'11','type':'ORDER_FILL','reason':'STOP_LOSS_ORDER','tradesClosed':[{'tradeID':'7'}]},
+])
+def test_exit_attribution_does_not_guess_from_partial_or_other_trade(fill):
+    b=broker([{'transaction':fill}])
+    assert b.confirmed_close_reason(owned(state='CLOSED',closingTransactionIDs=['12']))=='broker_closed'
+
+
+def test_no_exit_attribution_request_without_closure_evidence():
+    b=broker([])
+    assert b.confirmed_close_reason(owned())=='broker_closed'
+    assert b.confirmed_close_reason(owned(state='CLOSED'))=='broker_closed'
+    b.client.request.assert_not_called()
+
+
 def test_transport_failure_does_not_replay_writes_and_survives_restart(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     settings = Settings(_env_file=None, oanda_account_id='test')
@@ -176,10 +203,16 @@ def test_missing_trade_requires_broker_closed_state():
     assert t.status=='open' and t.remaining_units==100
 
 
-def test_closed_reconciliation_uses_total_pl_not_booked_partial_or_mid(monkeypatch):
+@pytest.mark.parametrize('attribution', ['absent','stop_loss','unavailable'])
+def test_closed_reconciliation_uses_total_pl_not_booked_partial_or_mid(monkeypatch,attribution):
     p=TradingPipeline.__new__(TradingPipeline)
     p.broker=Mock()
     p.broker.trade_details.return_value=owned(state='CLOSED',averageClosePrice='1.099',realizedPL='-25',closeTime='2026-09-21T12:00:00Z')
+    if attribution != 'absent':
+        p.broker.trade_details.return_value['closingTransactionIDs']=['12']
+        p.broker.confirmed_close_reason.return_value='stop_loss'
+    if attribution == 'unavailable':
+        p.broker.confirmed_close_reason.side_effect=Timeout('unavailable')
     p._quotes={'EUR/USD':SimpleNamespace(mid=1.2)}
     p.slack=Mock()
     p._ingest_journal_into_playbook=Mock()
@@ -192,7 +225,7 @@ def test_closed_reconciliation_uses_total_pl_not_booked_partial_or_mid(monkeypat
     p._mark_closed_missing(Mock(),t,SimpleNamespace(balance=1000))
     assert t.realized_pl==-25 and t.exit_price==1.099
     assert t.closed_at==datetime(2026,9,21,12,tzinfo=timezone.utc)
-    assert t.close_reason=='broker_closed' and t.status=='closed'
+    assert t.close_reason==('stop_loss' if attribution=='stop_loss' else 'broker_closed') and t.status=='closed'
     assert journal.call_args.kwargs['realized_pl']==-25
 
 

@@ -19,6 +19,7 @@ import pandas as pd
 
 from src.analysis.indicators import Divergence, compute_indicators, detect_rsi_divergence
 from src.analysis.mistakes import calendar_hold_reason, session_is_open
+from src.analysis.entry_confirmation import directional_strength, evidence_families, price_confirmation
 from src.config import Settings, get_settings
 from src.utils import format_price, pip_size, price_to_pips, utcnow
 
@@ -159,6 +160,7 @@ class TradeSignal:
     signal_type: str = "hold"
     source: str = "live"
     decision_context: dict[str, Any] | None = None
+    confirmation_review: dict[str, Any] | None = None
 
     def to_row(self, *, skipped: bool = False, skip_reason: str | None = None) -> dict[str, Any]:
         fingerprint = ""
@@ -839,7 +841,9 @@ def evaluate_signal(
             f"Indecision candle (body {body_atr:.2f} ATR) — wait for a committed close, "
             "not a doji through the envelope."
         )
-    elif action in {"BUY", "SELL"} and body_atr is not None and body_atr >= 0.6:
+    elif (action in {"BUY", "SELL"} and body_atr is not None and body_atr >= 0.6
+          and ((action == "BUY" and price > float(row["open"]))
+               or (action == "SELL" and price < float(row["open"])))):
         tag = f"Committed close ({body_atr:.1f} ATR body)"
         if tag not in confluence:
             confluence.append(tag)
@@ -855,10 +859,27 @@ def evaluate_signal(
         confluence = []
         reason = _session_hold_reason(now, settings)
 
-    strength = int(round(100 * max(len(bull_factors), len(bear_factors)) / 10.0))
-    strength = max(0, min(100, strength))
-    if action == "HOLD":
-        strength = min(strength, 55)
+    confirmation_review = None
+    if action in {"BUY", "SELL"}:
+        factors = bull_factors if action == "BUY" else bear_factors
+        opposed = (action == "BUY" and ema_fast <= ema_slow) or (action == "SELL" and ema_fast >= ema_slow)
+        confirmation_reason = None
+        if len(evidence_families(factors)) < 2:
+            confirmation_reason = "Entry confirmation: need support from at least two distinct evidence families."
+        elif (opposed or is_fade) and not price_confirmation(action, frame.loc[:row.name], timeframe):
+            confirmation_reason = "Entry confirmation: local trend opposes the entry or this is a fade; wait for a directional close beyond the previous bar."
+        confirmation_review = {'policy':'confirmed-reversal-v1', 'enabled':settings.confirmed_entry_policy,
+                               'allowed':confirmation_reason is None, 'reason':confirmation_reason,
+                               'local_trend_opposed':opposed, 'families':evidence_families(factors)}
+        if confirmation_reason and settings.confirmed_entry_policy:
+            reason = confirmation_reason
+            action = "HOLD"
+            sl = tp1 = tp2 = rr = None
+            confluence = []
+    strength = directional_strength(action, bull_factors, bear_factors)
+    if action in {"BUY", "SELL"}:
+        confluence.append("Evidence families: " + ", ".join(evidence_families(bull_factors if action == "BUY" else bear_factors)))
+        reason = "; ".join(confluence)
 
     return TradeSignal(
         symbol=symbol,
@@ -882,6 +903,7 @@ def evaluate_signal(
         confluence=confluence,
         reason=reason,
         strength=strength,
+        confirmation_review=confirmation_review,
         divergence=divergence.kind if divergence else None,
         d1_bias=d1_bias,
         macd=macd_line,

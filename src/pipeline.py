@@ -384,6 +384,7 @@ class TradingPipeline:
             )
             from src.analysis.documentation import read_documentation
             signal.decision_context["documentation"] = read_documentation()
+            signal.decision_context["confirmation_review"] = signal.confirmation_review
             result["reason"] = signal.reason
             result["strength"] = signal.strength
 
@@ -391,6 +392,17 @@ class TradingPipeline:
                 insert_signal(session, signal.to_row(skipped=False))
                 self._write_tape(session, signal)
                 return result
+
+            if signal.action in {"BUY", "SELL"}:
+                from src.analysis.entry_confirmation import reentry_reason, latest_bot_close
+                last = latest_bot_close(session, symbol)
+                prior = None if last is None else {'side': last.side, 'pl': float(last.realized_pl or 0), 'closed_at': last.closed_at}
+                blocked = reentry_reason(signal.action, frame, signal.timeframe, prior)
+                signal.decision_context['reentry_confirmation'] = {'allowed': blocked is None, 'reason': blocked,
+                    'enabled': self.settings.confirmed_entry_policy,
+                    'previous_bot_trade_id': last.id if last else None}
+                if blocked and self.settings.confirmed_entry_policy:
+                    return self._skip_trade(session, signal, result, blocked)
 
             try:
                 self.news.refresh(tavily_key=self.settings.tavily_api_key.get_secret_value())
@@ -1664,6 +1676,13 @@ class TradingPipeline:
                 logger.warning("Close reconciliation deferred for {}: {}", trade.broker_trade_id, exc)
                 raise RuntimeError("Unresolved broker closure; new entries blocked") from exc
             reason = "broker_closed"  # Do not guess stop/target from price proximity.
+            if row.get("closingTransactionIDs"):
+                try:
+                    reason = self.broker.confirmed_close_reason(row)
+                except Exception as exc:
+                    # P/L and closure are already confirmed; missing attribution
+                    # must not prevent position reconciliation or invent a cause.
+                    logger.warning("Exit attribution unavailable for {}: {}", trade.broker_trade_id, exc)
             trade.source = classify_remote_trade(row)
             trade.closed_at = closed_at
         else:
@@ -2058,7 +2077,7 @@ class TradingPipeline:
         from src.analysis.sampling import sampling_policy
         from src.analysis.decision_health import decision_health
         from src.analysis.indicator_audit import read_status as read_indicator_audit
-        from src.analysis.strategy_lab import read_status as read_strategy_status
+        from src.analysis.strategy_lab_job import read_learning_status as read_strategy_status
         with session_scope() as session:
             from src.data.storage import (
                 get_recent_notifications,
@@ -2136,6 +2155,7 @@ class TradingPipeline:
                     "specialist": "EUR/USD",
                     "trading_enabled": self.trading_enabled,
                     "strategy_research_only": self.settings.strategy_research_only,
+                    "confirmed_entry_policy": self.settings.confirmed_entry_policy,
                     "daily_loss_halt_enabled": (self.settings.oanda_environment != "practice" or self.settings.practice_daily_loss_halt_enabled),
                     "contextual_loss_review": self.settings.oanda_environment == "practice" and self.settings.practice_contextual_loss_review,
                     "environment": self.settings.oanda_environment,

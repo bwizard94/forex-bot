@@ -1,5 +1,7 @@
 # Mistakes this EUR/USD desk is trained to refuse
 
+> Historical educational notes. Fixed timeframe, risk, session, score and exclusion examples below are not current runtime policy. [OPERATING.md](OPERATING.md) takes precedence; negative outcomes alone do not establish these mistake labels or authorize a broad strategy ban.
+
 Standing avoidance book, skimmed from:
 
 - [Forex.com — Common forex trading mistakes](https://www.forex.com/en/trading-academy/courses/successful-trading-techniques/common-forex-trading-mistakes/)

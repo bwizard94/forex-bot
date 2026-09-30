@@ -297,6 +297,24 @@ def build_postmortem(
     scratch = abs(realized_pl) < settings.lesson_scratch_usd
     operator = (getattr(trade, "source", None) or "") == "human"
 
+    if not operator and settings.oanda_environment == "practice" and settings.practice_contextual_loss_review:
+        outcome = "scratch" if scratch else ("win" if realized_pl > 0 else "loss")
+        context = journal.entry_context or {}
+        fast, slow = context.get('ema_fast'), context.get('ema_slow')
+        notes = [headline]
+        if fast is not None and slow is not None:
+            opposed = (trade.side == 'BUY' and fast < slow) or (trade.side == 'SELL' and fast > slow)
+            notes.append('Entry EMA direction opposed the trade.' if opposed else 'Entry EMA direction did not oppose the trade.')
+        notes.append('This outcome alone does not establish a cause or a repeatable edge.')
+        improvement = ('Compare local trend, reversal confirmation, spread/original stop risk and exit fills '
+                       'with comparable winners and losers. A high heuristic score is not a win probability.')
+        if settings.confirmed_entry_policy and outcome == 'loss':
+            improvement += ' Same-side re-entry requires a fresh post-close directional price trigger; no whole-strategy ban.'
+        return {'outcome':outcome, 'exit_verdict':close_reason,
+                'what_went_wrong':' '.join(notes) if outcome == 'loss' else None,
+                'what_went_right':' '.join(notes) if outcome != 'loss' else None,
+                'how_to_avoid':improvement,
+                'lesson':f'Recorded {outcome} on {journal.fingerprint}. {improvement}'}
     if operator and scratch:
         what_right = (
             f"{headline} This was an operator demonstration that closed near breakeven. "

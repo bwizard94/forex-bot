@@ -17,6 +17,7 @@ import oandapyV20.endpoints.accounts as accounts
 import oandapyV20.endpoints.orders as orders
 import oandapyV20.endpoints.positions as positions
 import oandapyV20.endpoints.trades as trades
+import oandapyV20.endpoints.transactions as transactions
 from loguru import logger
 from oandapyV20.exceptions import V20Error
 
@@ -207,6 +208,30 @@ class PaperBroker:
         if row.get("state") != "OPEN":
             raise BrokerError("Trade is no longer open; reconcile first")
         return row
+
+    def confirmed_close_reason(self, row: dict[str, Any]) -> str:
+        """Attribute only the fill that fully closed this ticket, never price proximity."""
+        if row.get("state") != "CLOSED":
+            return "broker_closed"
+        ids = row.get("closingTransactionIDs") or []
+        # OANDA IDs increase chronologically; earlier fills can be partial exits.
+        for transaction_id in sorted({str(v) for v in ids}, key=int, reverse=True):
+            payload = self.client.request(transactions.TransactionDetails(
+                self.account_id, transactionID=transaction_id))
+            fill = payload.get("transaction") or {}
+            if str(fill.get("id")) != transaction_id or fill.get("type") != "ORDER_FILL":
+                continue
+            if not any(str(t.get("tradeID")) == str(row.get("id"))
+                       for t in fill.get("tradesClosed", [])):
+                continue
+            return {"STOP_LOSS_ORDER": "stop_loss",
+                    "GUARANTEED_STOP_LOSS_ORDER": "stop_loss",
+                    "TRAILING_STOP_LOSS_ORDER": "stop_loss",
+                    "TAKE_PROFIT_ORDER": "take_profit",
+                    "MARKET_ORDER_TRADE_CLOSE": "broker_market_close",
+                    "MARKET_ORDER_MARGIN_CLOSEOUT": "margin_closeout"}.get(
+                        fill.get("reason"), "broker_closed")
+        return "broker_closed"
 
     def close_trade(self, broker_trade_id: str, units: str = "ALL") -> dict[str, Any]:
         if time.monotonic() < self._close_retry_after.get(str(broker_trade_id), 0):
