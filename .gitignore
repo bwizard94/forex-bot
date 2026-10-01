@@ -90,3 +90,6 @@ extra datasets/*.zip
 
 !/desk/RELEASE_2.26.0.md
 !/desk/DECISION_RESEARCH_GUIDE.md
+
+# Private isolated practice instances
+/instances/
