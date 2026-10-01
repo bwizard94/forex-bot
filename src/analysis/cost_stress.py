@@ -79,6 +79,21 @@ def main():
             frames['M1'] = frames['M1'].tail(args.bars)
             settings = thaw_settings(json.loads(args.settings_snapshot.read_text())) if args.settings_snapshot else Settings(_env_file=None,signal_timeframe='M1')
             assumptions = ExecutionAssumptions(**json.loads(args.assumptions.read_text())) if args.assumptions else None
+            if assumptions is not None and assumptions.market_bars:
+                from dataclasses import replace
+                measured={pd.Timestamp(k):v for k,v in assumptions.market_bars.items()}
+                # Bound to measured coverage, but never silently drop interior missing bars.
+                a,b=min(measured),max(measured)
+                frames['M1']=frames['M1'].loc[(frames['M1'].index>=a)&(frames['M1'].index<=b)]
+                if settings.signal_timeframe=='M5':
+                    aggregated={}
+                    for ts in complete_m5(frames['M1']).index:
+                        chunk=[measured.get(ts+pd.Timedelta(minutes=i)) for i in range(5)]
+                        if any(r is None for r in chunk):continue
+                        aggregated[str(ts)]={side:{'o':rows[0]['o'],'h':max(float(r['h']) for r in rows),
+                            'l':min(float(r['l']) for r in rows),'c':rows[-1]['c']}
+                            for side in ('bid','ask') for rows in [[r[side] for r in chunk]]}
+                    assumptions=replace(assumptions,market_bars=aggregated,market_timeframe='M5')
             result = stress(frames, settings, assumptions=assumptions)
             result['settings_snapshot']['origin'] = 'active_process_allowlist' if args.settings_snapshot else 'repository_defaults_with_process_environment' 
         except Exception as exc:

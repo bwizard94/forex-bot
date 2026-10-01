@@ -41,3 +41,15 @@ def test_document_reads_detect_changes_and_missing_files(tmp_path):
     after=read_documentation(tmp_path)
     assert before['documents'][0]['sha256']!=after['documents'][0]['sha256']
     assert any(d.get('missing') for d in after['documents'])
+
+
+def test_unchanged_index_is_not_replaced(tmp_path):
+    from src.analysis.documentation import write_if_changed
+    p=tmp_path/'INDEX.md'
+    assert write_if_changed(p,'same')
+    before=p.stat()
+    assert not write_if_changed(p,'same')
+    assert p.stat().st_mtime_ns==before.st_mtime_ns
+    assert p.stat().st_ino==before.st_ino
+    assert write_if_changed(p,'changed')
+    assert p.read_text()=='changed'

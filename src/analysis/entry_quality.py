@@ -23,6 +23,12 @@ def entry_quality(signal, quote, settings):
     bound = entry + direction * cap * pip
     result = {'allowed': False, 'executable_entry': executable, 'drift_pips': drift,
               'worst_entry': bound, 'reward_risk_at_quote': reward/risk if risk > 0 else None}
+    from src.analysis.exit_plan import payoff
+    units = ((getattr(signal, 'decision_context', None) or {}).get('risk') or {}).get('units')
+    result['exit_plan'] = payoff(signal.action, executable, stop, first, target, units=units)
+    plan = result['exit_plan']
+    plan['meets_configured_gross_minimum'] = (plan.get('weighted_target_r', 0) >= settings.min_rr_ratio) if plan['status']=='measured_payoff' else None
+    plan['authority'] = 'diagnostic_only_pending_paired_validation'
     if abs(drift) > cap + 1e-8:
         result['reason'] = f'Entry quality: price moved {abs(drift):.1f} pips from setup (limit {cap:.1f}); wait for a new setup'
     elif risk <= 0 or reward <= 0 or direction*(first-executable) <= 0:

@@ -96,3 +96,13 @@ and separate execution research for news, portfolio caps and fees.
 [Release 2.25.0](desk/RELEASE_2.25.0.md) adds loss concentration reports, ongoing
 sampled trade excursions, separate prospective entry/exit experiments, measured
 execution research, and evidence-gated promotion/rollback plans.
+
+[Release 2.25.1](desk/RELEASE_2.25.1.md) adds individual recurring trade assessments,
+retains excursion tracking after partial exits, and corrects final-quote cost attribution.
+
+[Release 2.25.2](desk/RELEASE_2.25.2.md) reduces status polling payloads, caches unchanged
+status files and avoids redundant documentation index writes.
+
+[Release 2.26.0](desk/RELEASE_2.26.0.md) adds position-weighted payoff diagnostics,
+paired prospective entry/exit studies, scheduled measured-price research and a
+structured knowledge-gap inventory. See the [decision research guide](desk/DECISION_RESEARCH_GUIDE.md).

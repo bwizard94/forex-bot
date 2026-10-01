@@ -29,7 +29,7 @@ def contextual_report(session):
                hour_bucket(trade.opened_at) if trade.opened_at else 'unknown',
                journal.htf_bias or 'unknown')
         groups[key].append(journal)
-        quote = evidence.get('quote') or {}
+        quote = evidence.get('final_entry_quality') or evidence.get('quote') or {}
         bid, ask = number(quote.get('bid')), number(quote.get('ask'))
         spread = (ask-bid)*10000 if bid is not None and ask is not None and 0 < bid <= ask else None
         risk = ctx.get('initial_risk') or {}

@@ -18,7 +18,7 @@ def test_hourly_compiler_preserves_revisions_excludes_mirrors_and_deduplicates(t
             s.add(t);s.flush();s.add(TradeJournal(trade_id=t.id,symbol='EUR/USD',side='BUY',lesson='Check entry cost',outcome='loss'))
         s.commit()
         first=compile_knowledge(s,desk,lab,now)
-        assert first['changed']==3
+        assert first['changed']==5
         same=compile_knowledge(s,desk,lab,now)
         assert same['changed']==0
         assert len(list((desk/'knowledge/hourly').glob('*.json')))==1
@@ -29,5 +29,7 @@ def test_hourly_compiler_preserves_revisions_excludes_mirrors_and_deduplicates(t
         revised=compile_knowledge(s,desk,lab,now+timedelta(hours=2))
         assert revised['changed']==1 and revised['sha256']!=first['sha256']
         entries=json.loads((desk/'knowledge/current.json').read_text())['entries']
+        assert entries['research:knowledge_gaps']['local_closed_primary_bot_trades']==1
+        assert entries['research:knowledge_gaps']['missing']['original_risk']==1
         assert 'trade:1' in entries and 'trade:2' not in entries and 'trade:3' not in entries
         assert len(list((desk/'knowledge/revisions').glob('*.json')))==2

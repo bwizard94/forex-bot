@@ -7,7 +7,7 @@ from src.data.storage import Trade, TradeJournal, session_scope
 
 
 def update_excursion(trade, journal, quote, now, max_age=90):
-    if trade.source!='bot' or trade.venue!='oanda' or trade.parent_trade_id is not None or trade.status!='open': return False
+    if trade.source!='bot' or trade.venue!='oanda' or trade.parent_trade_id is not None or trade.status not in {'open','partial'}: return False
     if str(getattr(quote,'source','')).lower()!='oanda' or not getattr(quote,'tradeable',False):return False
     ts=utc(quote.ts)
     if ts is None or not 0 <= (now-ts).total_seconds() <= max_age: return False
@@ -41,7 +41,7 @@ def observe(pipeline):
         updated=eligible=0
         with session_scope() as session:
             pairs=session.execute(select(Trade,TradeJournal).join(TradeJournal,TradeJournal.trade_id==Trade.id)
-                .where(Trade.symbol=='EUR/USD',Trade.status=='open')).all()
+                .where(Trade.symbol=='EUR/USD',Trade.status.in_(['open','partial']))).all()
             for t,j in pairs:
                 q=quotes.get(t.symbol)
                 if q is not None and str(t.broker_trade_id) in owned:

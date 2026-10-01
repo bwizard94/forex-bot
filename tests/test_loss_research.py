@@ -117,3 +117,28 @@ def test_prospective_chunk_resumes_and_censors_endings(tmp_path,monkeypatch):
     resumed=lab.evaluate(spec,frames,pd.Timestamp('2026-09-22T00:00Z'),result)
     assert resumed['completed_chunks']==2
     assert resumed['chunks'][1]['candidate']!=resumed['chunks'][0]['candidate']
+
+
+def test_partial_position_keeps_original_risk_excursions():
+    now=datetime.now(timezone.utc)
+    t=SimpleNamespace(source='bot',venue='oanda',parent_trade_id=None,status='partial',side='BUY',opened_at=now-timedelta(minutes=2),stop_loss=1.1)
+    j=SimpleNamespace(entry_context={'initial_risk':{'basis':'entry_snapshot','fill':1.1,'stop_pips':10}})
+    q=SimpleNamespace(ts=now,bid=1.1008,ask=1.101,source='oanda',tradeable=True)
+    assert update_excursion(t,j,q,now)
+    assert j.entry_context['sampled_excursion']['mfe_r']==pytest.approx(.8)
+    t.status='closed';q.ts+=timedelta(seconds=1)
+    assert not update_excursion(t,j,q,q.ts)
+
+
+def test_individual_review_distinguishes_opposed_candle_and_sampled_giveback():
+    from src.analysis.loss_review import review_loss
+    t=SimpleNamespace(symbol='EUR/USD',side='BUY',slippage_pips=0)
+    j=SimpleNamespace(realized_pl=-10,close_reason='stop_loss',entry_context={
+        'initial_risk':{'basis':'entry_snapshot','currency':'USD','amount':10},
+        'sampled_excursion':{'mfe_r':.7,'mae_r':1,'samples':20},
+        'decision_evidence':{'bars':{'signal':{'last_ohlc':{'open':1.11,'close':1.10}}}}})
+    r=review_loss(t,j)
+    assert any('opposed' in f for f in r['facts'])
+    assert any('giveback' in f for f in r['hypotheses_to_test'])
+    assert r['cause_proven'] is False
+    assert any('lower bounds' in f for f in r['unknowns'])

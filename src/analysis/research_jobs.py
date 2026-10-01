@@ -12,25 +12,64 @@ ROOT = Path(__file__).resolve().parents[2]
 REPORTS = ROOT/'data/research/diagnostics'
 
 
+def compact_diagnostics(diagnostics):
+    """Keep counters and top reasons in status; the full report retains evidence."""
+    result = dict(diagnostics)
+    for key in ('hold_reasons', 'rejections', 'all_failed_checks'):
+        values = result.get(key)
+        if isinstance(values, dict):
+            ordered = sorted(values.items(), key=lambda item: (-item[1], item[0]))
+            result[key] = dict(ordered[:10])
+            result[key+'_distinct'] = max(len(values), result.get(key+'_distinct', 0))
+            result[key+'_omitted_count'] = result.get(key+'_omitted_count', 0) + sum(v for _,v in ordered[10:])
+    return result
+
+
+from functools import lru_cache
+from copy import deepcopy
+
+
+@lru_cache(maxsize=32)
+def _status_file(path, signature):
+    payload = json.loads(Path(path).read_text())
+    if not isinstance(payload, dict):
+        raise ValueError('Status must be an object')
+    # Also compact old on-disk status without rewriting historical artifacts.
+    if isinstance(payload.get('summary'), list):
+        for row in payload['summary']:
+            if isinstance(row, dict) and isinstance(row.get('rejections'), dict):
+                row['rejections'] = compact_diagnostics(row['rejections'])
+    return payload
+
+
 def read_status(directory=REPORTS):
     result = {}
-    for kind in ('attribution', 'costs', 'experiments', 'excursions'):
+    for kind in ('attribution', 'costs', 'experiments', 'excursions', 'market', 'paired'):
         try:
-            result[kind] = json.loads((directory/f'{kind}-status.json').read_text())
+            path = directory/f'{kind}-status.json'
+            stat = path.stat()
+            result[kind] = deepcopy(_status_file(str(path.resolve()),
+                (stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)))
             stamp=result[kind].get('finished_at') or result[kind].get('started_at')
             if stamp:
-                age=(datetime.now(timezone.utc)-datetime.fromisoformat(stamp)).total_seconds()
+                ts=datetime.fromisoformat(stamp)
+                if ts.tzinfo is None: raise ValueError('Timezone required')
+                age=(datetime.now(timezone.utc)-ts).total_seconds()
                 result[kind]['age_seconds']=max(0,round(age))
-                limit=(1020 if kind!='attribution' else 240) if result[kind].get('state')=='running' else (25200 if kind!='attribution' else 7200)
+                running=result[kind].get('state')=='running'
+                limit=(240 if kind=='attribution' else 1020) if running else (25200 if kind=='costs' else 7200)
                 if kind=='excursions':limit=90
+                if kind=='market':limit=1800
                 if age>limit: result[kind]['stale']=True
-        except (OSError, ValueError):
+        except FileNotFoundError:
             result[kind] = {'state': 'not_run'}
+        except (OSError, ValueError, TypeError):
+            result[kind] = {'state': 'unavailable', 'note': 'Status unreadable; availability is not confirmed.'}
     return result
 
 
 def run_report(kind, settings=None, directory=REPORTS):
-    if kind not in {'attribution', 'costs', 'experiments'}:
+    if kind not in {'attribution', 'costs', 'experiments', 'paired'}:
         raise ValueError('Unknown report kind')
     from src.config import get_settings
     from src.analysis.research_settings import freeze_settings
@@ -57,9 +96,10 @@ def run_report(kind, settings=None, directory=REPORTS):
             if url.get_backend_name() != 'sqlite' or not url.database or url.database == ':memory:':
                 raise ValueError('Diagnostics require a file-backed SQLite database')
             database = Path(url.database).resolve()
-            module = {'attribution':'src.analysis.learning_report','costs':'src.analysis.cost_stress','experiments':'src.analysis.policy_experiments'}[kind]
+            module = {'attribution':'src.analysis.learning_report','costs':'src.analysis.cost_stress','experiments':'src.analysis.policy_experiments','paired':'src.analysis.paired_study'}[kind]
             command = [sys.executable,'-m',module,'--database',str(database),'--output',str(output)]
             if kind=='costs':
+                run_market_archive()
                 try:
                     subprocess.run([sys.executable,'-m','src.analysis.broker_cost_profile'],cwd=ROOT,timeout=45,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,check=True)
                 except (OSError,subprocess.SubprocessError):
@@ -67,7 +107,14 @@ def run_report(kind, settings=None, directory=REPORTS):
             if kind!='attribution':
                 from src.analysis.execution_assumptions import archived_assumptions
                 assumptions_path=directory/f'assumptions-{run_id}.json'
-                atomic_write(assumptions_path,json.dumps(archived_assumptions(directory),indent=2))
+                assumptions=archived_assumptions(directory)
+                if kind=='costs':
+                    from src.analysis.measured_archive import load
+                    market=load()
+                    if not market:raise ValueError('Measured market archive unavailable')
+                    assumptions.update(market_bars=market,market_timeframe='M1')
+                    assumptions['provenance']+='; measured_completed_bid_ask'
+                atomic_write(assumptions_path,json.dumps(assumptions,indent=2))
                 if kind=='costs':command += ['--assumptions',str(assumptions_path)]
                 snapshot=directory/f'configuration-{run_id}.json'
                 atomic_write(snapshot,json.dumps(freeze_settings(settings,origin='active_process_allowlist'),indent=2))
@@ -90,13 +137,19 @@ def run_report(kind, settings=None, directory=REPORTS):
                 if not comparisons: detail+='\nNo versions have comparable recorded contexts yet.\n'
                 detail+='\nDifferences are descriptive; date and cost differences remain confounders. No automatic winner or promotion.\n'
                 detail+='\n'.join(loss_lines)+'\nDimensions overlap; compare winners and losers in the JSON artifact. Associations are not causes.\n'
+                detail+='\n## Individual trade assessments\n'
+                for item in payload.get('individual_reviews',[]):
+                    assessment=item['assessment']
+                    detail+=f"\n### Trade {item['trade_id']}\n"
+                    for key,label in (('facts','Observed'),('hypotheses_to_test','Test'),('unknowns','Unknown')):
+                        detail+=''.join(f'- {label}: {value}\n' for value in assessment[key])
                 status['summary']={'closed_trades':context['closed_trades'],'groups':len(context['groups']),
                                    'comparisons':len(context.get('comparisons',[]))}
-            elif kind=='experiments':
+            elif kind in {'experiments','paired'}:
                 status['summary']={k:v for k,v in payload.items() if k not in {'runs','chunks'}}
             else:
                 status['summary']=[{'scenario':r['scenario'],'metrics':r['completed_metrics'],
-                                    'rejections':r.get('diagnostics',{})} for r in payload['runs']]
+                                    'rejections':compact_diagnostics(r.get('diagnostics',{}))} for r in payload['runs']]
         except Exception as exc:
             status.update(state='failed',finished_at=datetime.now(timezone.utc).isoformat(),
                           error=type(exc).__name__, note='Report failed or timed out; prior reports retained.')
@@ -117,3 +170,19 @@ def archive_calendar(pipeline, directory=REPORTS):
     # Retain each distinct observed version; reads use known_at to avoid hindsight.
     path=folder/f'{digest}.json'
     if not path.exists(): atomic_write(path,json.dumps(events))
+
+
+def run_market_archive():
+    REPORTS.mkdir(parents=True,exist_ok=True)
+    with (REPORTS/'market.lock').open('a') as lock:
+        try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except BlockingIOError:return {'state':'already_running'}
+        status={'state':'running','started_at':datetime.now(timezone.utc).isoformat()}
+        atomic_write(REPORTS/'market-status.json',json.dumps(status))
+        try:
+            subprocess.run([sys.executable,'-m','src.analysis.measured_archive'],cwd=ROOT,
+                           timeout=120,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        except (OSError,subprocess.SubprocessError) as exc:
+            status.update(state='failed',finished_at=datetime.now(timezone.utc).isoformat(),error=type(exc).__name__)
+            atomic_write(REPORTS/'market-status.json',json.dumps(status))
+        return json.loads((REPORTS/'market-status.json').read_text())

@@ -17,6 +17,10 @@ LAB = Path(__file__).resolve().parents[2]/'data/research/strategy-lab'
 def compile_knowledge(session, desk=DESK, lab=LAB, now=None):
     now=now or datetime.now(timezone.utc)
     entries={}
+    from src.analysis.knowledge_gaps import inventory
+    gaps=inventory(session)
+    atomic_write(desk/'KNOWLEDGE_GAPS.md','# Evidence gaps to resolve\n\n'+json.dumps(gaps,indent=2)+'\n')
+    entries['research:knowledge_gaps']={'type':'evidence_inventory',**gaps}
     rows=session.execute(select(Trade,TradeJournal).join(TradeJournal,TradeJournal.trade_id==Trade.id)
         .where(Trade.symbol=='EUR/USD',Trade.source=='bot',Trade.venue=='oanda',
                Trade.parent_trade_id.is_(None),Trade.status=='closed')).all()
@@ -47,6 +51,17 @@ def compile_knowledge(session, desk=DESK, lab=LAB, now=None):
             entries['research:current']={'type':'research_status','source':str(path),
                 'status':data.get('status'),'generation':data.get('generation'),
                 'candidates':data.get('candidates',[]),'validated_for_live':False}
+    paired=lab.parent/'paired-study/latest.json'
+    if paired.exists():
+        try:
+            value=json.loads(paired.read_text())
+            entries['research:paired']={'type':'research_status','source':str(paired),
+                'state':value.get('state'),'registered_at':value.get('registered_at'),
+                'hypotheses':value.get('hypotheses',{}),'cohorts':value.get('cohorts',{}),
+                'gates':value.get('gates',{}),'blockers':value.get('blockers',[]),
+                'validated_for_live':False,'evidence_label':'Paired opportunity simulations; not execution permission'}
+        except (OSError,ValueError):
+            entries['research:paired']={'type':'research_status','state':'unavailable','validated_for_live':False}
     folder=desk/'knowledge';folder.mkdir(parents=True,exist_ok=True)
     previous=json.loads((folder/'current.json').read_text()) if (folder/'current.json').exists() else {'entries':{}}
     changed={k:v for k,v in entries.items() if previous['entries'].get(k)!=v}

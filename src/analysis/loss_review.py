@@ -36,6 +36,21 @@ def review_loss(trade, journal):
         facts.append(f'Quoted entry spread / original stop distance: {cost:.1%}')
         tests.append('Compare cost burden across comparable entries; spread is a cost, not proof of why price reversed')
     else:unknown.append('Entry spread/stop comparison unavailable')
+    path=context.get('sampled_excursion') or {}
+    mfe=number(path.get('mfe_r'));mae=number(path.get('mae_r'))
+    if mfe is not None and mae is not None:
+        facts.append(f'Sampled executable path: favorable {mfe:.2f}R; adverse {mae:.2f}R; {path.get("samples", 0)} observations')
+        unknown.append('Sampled extremes are lower bounds; missed ticks and exact intrabar ordering remain unknown')
+        if pl is not None and pl<0 and mfe>=0.5:
+            tests.append('Observed profit giveback: compare a preregistered exit alternative with unchanged entries, including winners and costs; do not assume a tighter stop improves expectancy')
+    bars=(evidence.get('bars') or {}).get('signal') or {}
+    candle=bars.get('last_ohlc') or {}
+    op,cl=number(candle.get('open')),number(candle.get('close'))
+    if op is not None and cl is not None and trade.side in {'BUY','SELL'}:
+        opposed=(cl-op)*(1 if trade.side=='BUY' else -1)<0
+        facts.append('Last completed signal candle body '+('opposed' if opposed else 'did not oppose')+' the entry direction')
+        if opposed:
+            tests.append('Compare waiting for local directional confirmation against the unchanged entry; higher-timeframe alignment alone does not establish a completed reversal')
     unknown.append('Signal failure versus ordinary losing-trade variance is not established by this outcome')
     tests.append('Compare the same timeframe, policy, session and market conditions with both winners and losers on fresh data')
     return {'version':1,'classification':'loss_requires_context' if pl is not None and pl<0 else 'non_loss',

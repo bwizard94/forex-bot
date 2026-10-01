@@ -16,7 +16,7 @@ def loss_attribution(session):
     evidence=[]
     for j,t in paired:
         if t is None or t not in book or t.status!='closed': continue
-        ctx=j.entry_context or {};d=ctx.get('decision_evidence') or {};q=d.get('quote') or {}
+        ctx=j.entry_context or {};d=ctx.get('decision_evidence') or {};q=d.get('final_entry_quality') or d.get('quote') or {}
         risk=ctx.get('initial_risk') or {};stop=number(risk.get('stop_pips')) if risk.get('basis')=='entry_snapshot' else None
         bid,ask=number(q.get('bid')),number(q.get('ask'))
         burden=(ask-bid)*10000/stop if bid and ask and ask>=bid and stop and stop>0 else None

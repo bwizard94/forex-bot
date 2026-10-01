@@ -140,3 +140,31 @@ def test_settings_allowlist_covers_direct_signal_inputs():
     tree=ast.parse(Path('src/analysis/signals.py').read_text())
     used={n.attr for n in ast.walk(tree) if isinstance(n,ast.Attribute) and isinstance(n.value,ast.Name) and n.value.id=='settings'}
     assert used <= NAMES
+
+
+def test_status_compaction_cache_freshness_and_corruption(tmp_path, monkeypatch):
+    from datetime import datetime, timezone, timedelta
+    from pathlib import Path
+    stamp=(datetime.now(timezone.utc)-timedelta(hours=3)).isoformat()
+    p=tmp_path/'experiments-status.json'
+    p.write_text(json.dumps({'state':'complete','finished_at':stamp}))
+    costs=tmp_path/'costs-status.json'
+    reasons={f'reason-{i}':i+1 for i in range(100)}
+    costs.write_text(json.dumps({'state':'complete','summary':[{'rejections':{'hold_reasons':reasons}}]}))
+    research_jobs._status_file.cache_clear()
+    first=research_jobs.read_status(tmp_path)
+    assert first['experiments']['stale']
+    details=first['costs']['summary'][0]['rejections']
+    assert research_jobs.compact_diagnostics(details)==details
+    assert len(details['hold_reasons'])==10
+    assert sum(details['hold_reasons'].values())+details['hold_reasons_omitted_count']==sum(reasons.values())
+    first['costs']['summary'].clear()
+    assert research_jobs.read_status(tmp_path)['costs']['summary']
+    assert research_jobs._status_file.cache_info().hits>=2
+    replacement=tmp_path/'replacement';replacement.write_text('{"state":"failed"}')
+    replacement.replace(p)
+    assert research_jobs.read_status(tmp_path)['experiments']['state']=='failed'
+    p.write_text('[]')
+    assert research_jobs.read_status(tmp_path)['experiments']['state']=='unavailable'
+    p.write_text('{"finished_at":"2026-10-01T00:00:00"}')
+    assert research_jobs.read_status(tmp_path)['experiments']['state']=='unavailable'

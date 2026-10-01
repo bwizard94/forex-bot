@@ -27,6 +27,11 @@ def report_database(path: Path) -> dict:
             report['contextual_attribution'] = contextual_report(session)
             from src.analysis.loss_attribution import loss_attribution
             report['loss_attribution'] = loss_attribution(session)
+            from src.analysis.growth import _desk_closed
+            from src.analysis.loss_review import review_loss
+            report['individual_reviews'] = [{'trade_id': t.id, 'assessment': review_loss(t,j)}
+                for j,t in _desk_closed(session,'EUR/USD')[0]
+                if t and t.source=='bot' and t.venue=='oanda' and t.parent_trade_id is None and t.status=='closed']
             reasons = Counter()
             versions = Counter()
             actions = Counter()

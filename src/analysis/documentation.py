@@ -10,7 +10,7 @@ from src.data.storage import Trade, TradeJournal
 
 DESK = Path(__file__).resolve().parents[2] / 'desk'
 LOCK = Lock()
-READING = ('OPERATING.md', 'SCALPING.md', 'MISTAKES.md', 'MT4.md',
+READING = ('OPERATING.md', 'DECISION_RESEARCH_GUIDE.md', 'PAIRED_STUDY.md', 'KNOWLEDGE_GAPS.md', 'SCALPING.md', 'MISTAKES.md', 'MT4.md',
            'GROWTH.md', 'LEARNING_LOG.md', 'journal/INDEX.md',
            'STRATEGY_LAB.md', 'STRATEGY_LEARNING_STATUS.md', 'KNOWLEDGE_BASE.md',
            'INDICATOR_AUDIT.md', 'BOT_DESIGN_RESEARCH_2026-09-30.md',
@@ -24,6 +24,16 @@ def atomic_write(path, text):
         out.write(text)
         temporary = Path(out.name)
     temporary.replace(path)
+
+
+def write_if_changed(path, text):
+    try:
+        if path.read_text(encoding='utf-8') == text:
+            return False
+    except FileNotFoundError:
+        pass
+    atomic_write(path, text)
+    return True
 
 
 def read_documentation(desk=DESK):
@@ -107,7 +117,7 @@ def export_documents(session, desk=DESK):
                 atomic_write(current, body)
             index.append(f'| {trade.id} | {trade.source} / {trade.venue} | {trade.status} | {journal.outcome} | {journal.realized_pl} | [{name}]({name}) |')
         index.extend(['', '[Daily activity and lessons](daily/INDEX.md)', '', 'Revisions are preserved in [revisions/](revisions/); identical content does not create duplicate versions.', ''])
-        atomic_write(desk / 'journal/INDEX.md', '\n'.join(index))
+        write_if_changed(desk / 'journal/INDEX.md', '\n'.join(index))
         catalog = ['# Desk documentation index', '',
                    'Start with the operating rules, then review the current book and individual trade journals. Existing paths are preserved.', '',
                    '## Operating rules', '']
@@ -120,7 +130,7 @@ def export_documents(session, desk=DESK):
             catalog.extend(f'- [{name}]({name})' for name in sorted(names))
         catalog.extend(['', '## Individual trade journals', '', '- [Trading journey](journal/INDEX.md)', '',
                         'Do not edit generated journals: use a separate manual notes document. Prose lessons are proposals, not authorization to alter trading rules.', ''])
-        atomic_write(desk / 'INDEX.md', '\n'.join(catalog))
+        write_if_changed(desk / 'INDEX.md', '\n'.join(catalog))
         from src.analysis.daily_journey import render_daily_journey
         today = datetime.now(timezone.utc).date()
         for day in (today - timedelta(days=1), today):
@@ -129,7 +139,7 @@ def export_documents(session, desk=DESK):
             if not path.exists() or path.read_text() != body:
                 atomic_write(path, body)
         daily_files = sorted((desk / 'journal/daily').glob('????-??-??.md'), reverse=True)
-        atomic_write(desk / 'journal/daily/INDEX.md', '# Daily trading journey\n\n' +
+        write_if_changed(desk / 'journal/daily/INDEX.md', '# Daily trading journey\n\n' +
                      '\n'.join(f'- [{p.stem}]({p.name})' for p in daily_files) + '\n')
         receipt = read_documentation(desk)
         atomic_write(desk / 'DOCUMENT_ACCESS.json', json.dumps(receipt, indent=2)+'\n')
